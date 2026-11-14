@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProvaFácil - Corrija suas provas com rapidez e precisão</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        /* Curva do cabeçalho da tela inicial */
+        .home-header-bg {
+            background: linear-gradient(180deg, #003b8e 0%, #0056b3 100%);
+            border-bottom-left-radius: 50% 15%;
+            border-bottom-right-radius: 50% 15%;
+            position: relative;
+        }
+
+        /* Efeito de scanner a laser */
+        @keyframes scanLaser {
+            0% { top: 8%; opacity: 0.9; }
+            50% { top: 90%; opacity: 1; }
+            100% { top: 8%; opacity: 0.9; }
+        }
+        .scanner-laser {
+            position: absolute;
+            left: 6%;
+            right: 6%;
+            height: 3px;
+            background: #ff2a2a;
+            box-shadow: 0 0 12px 3px rgba(255, 42, 42, 0.85);
+            animation: scanLaser 2.6s ease-in-out infinite;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        /* Cantoneiras do Scanner */
+        .corner-bracket {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-color: #ffffff;
+            z-index: 20;
+            pointer-events: none;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+        }
+        .corner-tl { top: 14px; left: 14px; border-top: 5px solid white; border-left: 5px solid white; border-top-left-radius: 12px; }
+        .corner-tr { top: 14px; right: 14px; border-top: 5px solid white; border-right: 5px solid white; border-top-right-radius: 12px; }
+        .corner-bl { bottom: 14px; left: 14px; border-bottom: 5px solid white; border-left: 5px solid white; border-bottom-left-radius: 12px; }
+        .corner-br { bottom: 14px; right: 14px; border-bottom: 5px solid white; border-right: 5px solid white; border-bottom-right-radius: 12px; }
+
+        /* Estilo de Impressão para o Cartão Resposta */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-card-area, #printable-card-area * {
+                visibility: visible;
+            }
+            #printable-card-area {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 100%;
+                box-shadow: none !important;
+                border: 2px solid #003b8e !important;
+                padding: 24px !important;
+                background: white !important;
+            }
+        }
+
+        /* Scrollbar suave */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 59, 142, 0.25);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-0 sm:p-4 md:p-6">
+
+    <!-- Barra Superior de Demonstração (Atalhos Rápidos de Telas) -->
+    <div class="hidden md:flex items-center gap-2 mb-4 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-sm border border-blue-100 text-xs font-semibold text-slate-600">
+        <span class="text-blue-900 font-bold mr-2"><i class="fa-solid fa-mobile-screen-button mr-1"></i> Navegação Rápida:</span>
+        <button onclick="navigate('home')" class="nav-pill px-3 py-1.5 rounded-full bg-blue-600 text-white transition" id="pill-home">1. Início</button>
+        <button onclick="navigate('gabaritos')" class="nav-pill px-3 py-1.5 rounded-full hover:bg-blue-50 transition" id="pill-gabaritos">2. Gerenciar Gabaritos</button>
+        <button onclick="navigate('cartao')" class="nav-pill px-3 py-1.5 rounded-full hover:bg-blue-50 transition" id="pill-cartao">3. Gerar Cartão</button>
+        <button onclick="navigate('corrigir')" class="nav-pill px-3 py-1.5 rounded-full hover:bg-blue-50 transition" id="pill-corrigir">4. Corrigir Prova</button>
+        <button onclick="navigate('resultado')" class="nav-pill px-3 py-1.5 rounded-full hover:bg-blue-50 transition" id="pill-resultado">5. Resultado</button>
+        <button onclick="navigate('historico')" class="nav-pill px-3 py-1.5 rounded-full hover:bg-blue-50 transition" id="pill-historico">6. Ver Resultados</button>
+    </div>
+
+    <!-- Layout Principal: Dispositivo Mobile + Card Informativo Lateral -->
+    <div class="flex flex-col lg:flex-row items-center lg:items-start gap-8 max-w-5xl w-full justify-center">
+
+        <!-- CONTAINER DO APLICATIVO (Simulador Mobile / App Nativo) -->
+        <div class="w-full sm:w-[410px] min-h-screen sm:min-h-[800px] sm:max-h-[850px] bg-[#f2f7ff] sm:rounded-[42px] shadow-2xl sm:border-[8px] sm:border-white overflow-hidden flex flex-col relative">
+
+            <!-- Barra de Status iOS/Mobile -->
+            <div id="status-bar" class="bg-[#003b8e] text-white px-7 pt-3 pb-1.5 flex justify-between items-center text-xs font-bold z-30 transition-colors duration-300">
+                <span>9:41</span>
+                <div class="flex items-center space-x-1.5">
+                    <i class="fa-solid fa-signal text-[11px]"></i>
+                    <i class="fa-solid fa-wifi text-[11px]"></i>
+                    <i class="fa-solid fa-battery-full text-[13px]"></i>
+                </div>
+            </div>
+
+            <!-- Toast de Notificação -->
+            <div id="toast" class="pointer-events-none fixed sm:absolute top-14 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 opacity-0 transition-all duration-300 transform -translate-y-2">
+                <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+                <span id="toast-msg">Operação realizada!</span>
+            </div>
+
+            <!-- ==========================================
+                 TELA 1: HOME (MENU PRINCIPAL)
+            =========================================== -->
+            <section id="screen-home" class="flex-1 flex flex-col justify-between overflow-y-auto bg-white">
+                <!-- Header Azul Curvo com Capelo -->
+                <div class="home-header-bg pt-3 pb-10 px-6 text-center text-white shadow-md">
+                    <!-- Ícone Capelo (Chapéu de Formatura) -->
+                    <div class="mx-auto w-28 h-20 flex items-center justify-center mb-1 relative">
+                        <svg viewBox="0 0 140 95" class="w-full h-full drop-shadow-md">
+                            <!-- Parte inferior do capelo -->
+                            <path d="M38 48 L38 70 C38 80, 102 80, 102 70 L102 48 Z" fill="#e6f0ff"/>
+                            <!-- Topo do capelo (losango) -->
+                            <polygon points="70,10 130,36 70,62 10,36" fill="#ffffff"/>
+                            <!-- Fio / Tassel amarelo -->
+                            <path d="M70,36 L108,47 L108,76" stroke="#facc15" stroke-width="4" stroke-linecap="round" fill="none"/>
+                            <circle cx="70" cy="36" r="4" fill="#eab308"/>
+                            <path d="M104,76 L112,76 L114,88 L102,88 Z" fill="#facc15"/>
+                        </svg>
+                    </div>
+
+                    <h1 class="text-4xl font-extrabold tracking-tight mb-2 drop-shadow-sm">
+                        Prova<span class="text-[#ffcc00]">Fácil</span>
+                    </h1>
+                    <p class="text-blue-100 text-sm font-medium leading-snug max-w-[230px] mx-auto">
+                        Corrija suas provas com rapidez e precisão!
+                    </p>
+                </div>
+
+                <!-- Botões Principais -->
+                <div class="px-5 py-4 space-y-3.5 flex-1 flex flex-col justify-center">
+                    <!-- 1. Corrigir Prova -->
+                    <button onclick="navigate('corrigir')" class="w-full bg-gradient-to-r from-[#0088ff] to-[#0066ee] hover:brightness-105 active:scale-[0.99] text-white p-4 rounded-2xl shadow-md shadow-blue-500/20 flex items-center justify-between transition group">
+                        <div class="flex items-center gap-4 text-left">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+                                <i class="fa-solid fa-camera"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-base leading-tight">Corrigir Prova</div>
+                                <div class="text-xs text-blue-100 leading-tight mt-0.5">Use a câmera para escanear o cartão resposta</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-white/80 group-hover:translate-x-1 transition"></i>
+                    </button>
+
+                    <!-- 2. Gerenciar Gabaritos -->
+                    <button onclick="navigate('gabaritos')" class="w-full bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:brightness-105 active:scale-[0.99] text-white p-4 rounded-2xl shadow-md shadow-green-500/20 flex items-center justify-between transition group">
+                        <div class="flex items-center gap-4 text-left">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-base leading-tight">Gerenciar Gabaritos</div>
+                                <div class="text-xs text-green-100 leading-tight mt-0.5">Cadastrar ou editar gabaritos</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-white/80 group-hover:translate-x-1 transition"></i>
+                    </button>
+
+                    <!-- 3. Gerar Cartão Resposta -->
+                    <button onclick="navigate('cartao')" class="w-full bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:brightness-105 active:scale-[0.99] text-white p-4 rounded-2xl shadow-md shadow-purple-500/20 flex items-center justify-between transition group">
+                        <div class="flex items-center gap-4 text-left">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+                                <i class="fa-solid fa-file-lines"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-base leading-tight">Gerar Cartão Resposta</div>
+                                <div class="text-xs text-purple-100 leading-tight mt-0.5">Crie o cartão para seus alunos</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-white/80 group-hover:translate-x-1 transition"></i>
+                    </button>
+
+                    <!-- 4. Ver Resultados -->
+                    <button onclick="navigate('historico')" class="w-full bg-gradient-to-r from-[#f97316] to-[#ea580c] hover:brightness-105 active:scale-[0.99] text-white p-4 rounded-2xl shadow-md shadow-orange-500/20 flex items-center justify-between transition group">
+                        <div class="flex items-center gap-4 text-left">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+                                <i class="fa-solid fa-chart-column"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-base leading-tight">Ver Resultados</div>
+                                <div class="text-xs text-orange-100 leading-tight mt-0.5">Acompanhe o desempenho</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-white/80 group-hover:translate-x-1 transition"></i>
+                    </button>
+                </div>
+
+                <!-- Rodapé com Onda Azul e Amarela -->
+                <div class="relative pt-3 pb-5 text-center overflow-hidden bg-gradient-to-b from-white to-blue-50">
+                    <div class="flex items-center justify-center gap-2 z-10 relative mb-2">
+                        <i class="fa-solid fa-lightbulb text-amber-400 text-xl drop-shadow"></i>
+                        <span class="text-xs font-extrabold text-[#003b8e]">Tecnologia a favor<br>da educação!</span>
+                    </div>
+                    <!-- Ondas decorativas -->
+                    <svg viewBox="0 0 400 35" class="w-full h-7 absolute bottom-0 left-0" preserveAspectRatio="none">
+                        <path d="M0,15 Q100,35 200,15 T400,15 L400,35 L0,35 Z" fill="#facc15"/>
+                        <path d="M0,24 Q120,5 240,24 T400,20 L400,35 L0,35 Z" fill="#004aad"/>
+                    </svg>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 TELA 2: GERENCIAR GABARITOS
+            =========================================== -->
+            <section id="screen-gabaritos" class="hidden flex-1 flex flex-col bg-[#f4f8ff] overflow-hidden">
+                <!-- Top App Bar -->
+                <div class="bg-[#003b8e] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+                    <button onclick="navigate('home')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-arrow-left text-lg"></i>
+                    </button>
+                    <h2 class="font-bold text-base">Gerenciar Gabaritos</h2>
+                    <button onclick="saveCurrentGabarito()" title="Salvar Gabarito" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-floppy-disk text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Conteúdo -->
+                <div class="p-4 flex-1 overflow-y-auto space-y-4">
+                    <!-- Seletor de gabaritos salvos ou criar novo -->
+                    <div class="bg-blue-100/70 border border-blue-200 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                        <select id="saved-gabaritos-select" onchange="loadSelectedGabarito(this.value)" class="bg-white text-slate-800 text-xs font-semibold rounded-lg px-2.5 py-2 border border-blue-200 flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </select>
+                        <button onclick="createNewGabarito()" class="bg-[#004aad] hover:bg-blue-800 text-white text-xs font-bold px-3 py-2 rounded-lg shrink-0 transition">
+                            <i class="fa-solid fa-plus mr-1"></i>Novo
+                        </button>
+                    </div>
+
+                    <!-- Nome do Gabarito -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Nome do Gabarito:</label>
+                        <input id="gabarito-name-input" type="text" value="Matemática - 10 Questões"
+                            class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Quantidade de Questões -->
+                    <div class="text-center">
+                        <label class="block text-xs font-bold text-slate-700 text-left mb-2">Quantidade de Questões:</label>
+                        <div class="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                            <button onclick="changeQuestionCount(-1)" class="w-10 h-9 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-lg flex items-center justify-center transition">
+                                <i class="fa-solid fa-minus text-xs"></i>
+                            </button>
+                            <span id="gabarito-count-display" class="w-16 text-center font-extrabold text-base text-slate-800">10</span>
+                            <button onclick="changeQuestionCount(1)" class="w-10 h-9 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-lg flex items-center justify-center transition">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Respostas Corretas -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-bold text-slate-700">Respostas Corretas:</label>
+                            <button onclick="randomizeGabaritoAnswers()" class="text-[11px] font-semibold text-blue-600 hover:underline">
+                                <i class="fa-solid fa-shuffle mr-1"></i>Preencher aleatório
+                            </button>
+                        </div>
+                        <div id="gabarito-answers-grid" class="grid grid-cols-2 gap-x-4 gap-y-2.5 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
+                            <!-- Gerado dinamicamente via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botão Salvar Gabarito -->
+                <div class="p-4 bg-white border-t border-slate-200">
+                    <button onclick="saveCurrentGabarito()" class="w-full bg-gradient-to-r from-[#16a34a] to-[#15803d] hover:brightness-105 active:scale-[0.99] text-white font-bold py-3.5 rounded-xl shadow-md shadow-green-600/20 flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Salvar Gabarito</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 TELA 3: GERAR CARTÃO RESPOSTA
+            =========================================== -->
+            <section id="screen-cartao" class="hidden flex-1 flex flex-col bg-[#f4f8ff] overflow-hidden">
+                <!-- Top App Bar -->
+                <div class="bg-[#003b8e] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+                    <button onclick="navigate('home')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-arrow-left text-lg"></i>
+                    </button>
+                    <h2 class="font-bold text-base">Gerar Cartão Resposta</h2>
+                    <div class="w-8"></div>
+                </div>
+
+                <!-- Conteúdo -->
+                <div class="p-4 flex-1 overflow-y-auto space-y-3.5">
+                    <!-- Info Banner -->
+                    <div class="bg-[#dbeafe] border border-blue-200 rounded-xl p-3 flex items-center gap-3 text-[#1e3a8a]">
+                        <i class="fa-solid fa-circle-info text-blue-600 text-lg shrink-0"></i>
+                        <p class="text-xs font-medium leading-snug">
+                            Selecione o gabarito e a quantidade de questões para gerar o cartão.
+                        </p>
+                    </div>
+
+                    <!-- Selecionar Gabarito -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Gabarito:</label>
+                        <select id="cartao-gabarito-select" onchange="syncCartaoWithGabarito(this.value)"
+                            class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </select>
+                    </div>
+
+                    <!-- Quantidade de Questões -->
+                    <div class="text-center">
+                        <label class="block text-xs font-bold text-slate-700 text-left mb-1.5">Quantidade de Questões:</label>
+                        <div class="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                            <button onclick="changeQuestionCount(-1)" class="w-10 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold flex items-center justify-center transition">
+                                <i class="fa-solid fa-minus text-xs"></i>
+                            </button>
+                            <span id="cartao-count-display" class="w-14 text-center font-extrabold text-sm text-slate-800">10</span>
+                            <button onclick="changeQuestionCount(1)" class="w-10 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold flex items-center justify-center transition">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Preview do Cartão Resposta Imprimível -->
+                    <div id="printable-card-area" class="bg-white border-2 border-[#1e3a8a]/30 rounded-2xl p-3.5 shadow-sm">
+                        <div class="bg-[#003b8e] text-white text-center font-extrabold text-sm py-1.5 rounded-lg tracking-wide mb-3">
+                            CARTÃO RESPOSTA
+                        </div>
+
+                        <div class="flex items-center gap-2 text-xs font-semibold text-slate-700 mb-3">
+                            <div class="flex-1 flex items-end gap-1">
+                                <span>Nome:</span>
+                                <div class="flex-1 border-b border-slate-400 h-4"></div>
+                            </div>
+                            <div class="w-24 flex items-end gap-1">
+                                <span>Turma:</span>
+                                <div class="flex-1 border-b border-slate-400 h-4"></div>
+                            </div>
+                        </div>
+
+                        <p class="text-[10px] text-center text-slate-400 mb-2">
+                            (Toque nas bolinhas abaixo se desejar pré-marcar para teste)
+                        </p>
+
+                        <!-- Grade de Bolinhas (2 Colunas) -->
+                        <div id="cartao-bubbles-grid" class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                            <!-- Gerado dinamicamente via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botão Imprimir ou Salvar -->
+                <div class="p-4 bg-white border-t border-slate-200">
+                    <button onclick="window.print()" class="w-full bg-gradient-to-r from-[#0051ba] to-[#003b8e] hover:brightness-110 active:scale-[0.99] text-white font-bold py-3.5 rounded-xl shadow-md shadow-blue-800/20 flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-print"></i>
+                        <span>Imprimir ou Salvar</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 TELA 4: CORRIGIR PROVA (SCANNER OMR)
+            =========================================== -->
+            <section id="screen-corrigir" class="hidden flex-1 flex flex-col bg-[#f4f8ff] overflow-hidden">
+                <!-- Top App Bar -->
+                <div class="bg-[#003b8e] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+                    <button onclick="stopCamera(); navigate('home')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-arrow-left text-lg"></i>
+                    </button>
+                    <h2 class="font-bold text-base">Corrigir Prova</h2>
+                    <button onclick="toggleRealCamera()" title="Alternar Câmera Real" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-video text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Topo Informativo -->
+                <div class="p-3 bg-white border-b border-slate-200">
+                    <div class="bg-[#bfdbfe] rounded-xl p-2.5 flex items-center gap-3 text-[#1e3a8a]">
+                        <div class="w-9 h-9 rounded-lg bg-[#004aad] text-white flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-camera"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-xs font-bold leading-tight">Aponte a câmera para o cartão resposta</p>
+                            <p class="text-[11px] text-blue-900/80 mt-0.5">Toque nas alternativas do cartão para simular a leitura do aluno</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visor da Câmera / Mesa de Madeira com Cartão -->
+                <div class="relative flex-1 flex items-center justify-center p-5 overflow-hidden"
+                     style="background: radial-gradient(circle, #8d5b3c 0%, #5c3822 100%);">
+
+                    <!-- Vídeo da câmera real (oculto por padrão até ativar) -->
+                    <video id="camera-video" autoplay playsinline muted class="hidden absolute inset-0 w-full h-full object-cover z-0"></video>
+
+                    <!-- Moldura de Foco Branca -->
+                    <div class="corner-bracket corner-tl"></div>
+                    <div class="corner-bracket corner-tr"></div>
+                    <div class="corner-bracket corner-bl"></div>
+                    <div class="corner-bracket corner-br"></div>
+
+                    <!-- Linha Laser Animada -->
+                    <div class="scanner-laser"></div>
+
+                    <!-- Folha de Papel do Cartão Resposta na Câmera -->
+                    <div class="relative z-10 w-full max-w-[325px] bg-[#f8fafc] rounded-lg shadow-2xl p-3.5 border border-slate-300 transform rotate-[-0.6deg]">
+                        <div class="bg-[#1e3a8a] text-white text-center font-extrabold text-xs py-1.5 rounded tracking-wider mb-2.5">
+                            CARTÃO RESPOSTA
+                        </div>
+
+                        <!-- Nome do Aluno Editável -->
+                        <div class="flex items-center gap-2 text-[11px] font-semibold text-slate-700 mb-2">
+                            <div class="flex-1 flex items-center gap-1">
+                                <span>Nome:</span>
+                                <input id="student-name-input" type="text" value="Lucas Oliveira"
+                                    class="w-full border-b border-slate-400 bg-transparent text-[11px] font-bold text-slate-900 focus:outline-none px-1">
+                            </div>
+                            <div class="w-20 flex items-center gap-1">
+                                <span>Turma:</span>
+                                <input id="student-class-input" type="text" value="9º A"
+                                    class="w-full border-b border-slate-400 bg-transparent text-[11px] font-bold text-slate-900 focus:outline-none px-1">
+                            </div>
+                        </div>
+
+                        <!-- Grade Interativa de Respostas do Aluno -->
+                        <div id="scanner-bubbles-grid" class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs pt-1">
+                            <!-- Gerado via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Controles Flutuantes da Câmera -->
+                    <button onclick="showToast('Flash alternado!')" class="absolute bottom-3 left-4 z-20 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition">
+                        <i class="fa-solid fa-bolt text-xs"></i>
+                    </button>
+                    <button onclick="simulateRandomStudentSheet()" title="Simular outro aluno" class="absolute bottom-3 right-4 z-20 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition">
+                        <i class="fa-regular fa-image text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Botão Capturar e Corrigir -->
+                <div class="p-3.5 bg-white border-t border-slate-200 flex gap-2">
+                    <button onclick="simulateRandomStudentSheet()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3.5 py-3 rounded-xl text-xs transition shrink-0">
+                        <i class="fa-solid fa-dice mr-1"></i>Sortear Aluno
+                    </button>
+                    <button onclick="gradeCurrentExam()" class="flex-1 bg-gradient-to-r from-[#0066ee] to-[#003b8e] hover:brightness-110 active:scale-[0.99] text-white font-bold py-3 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Escanear e Corrigir</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 TELA 5: RESULTADO DA CORREÇÃO
+            =========================================== -->
+            <section id="screen-resultado" class="hidden flex-1 flex flex-col bg-[#f4f8ff] overflow-hidden">
+                <!-- Top App Bar -->
+                <div class="bg-[#003b8e] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+                    <button onclick="navigate('corrigir')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-chevron-left text-lg"></i>
+                    </button>
+                    <h2 class="font-bold text-base">Resultado da Correção</h2>
+                    <button onclick="navigate('home')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-house text-base"></i>
+                    </button>
+                </div>
+
+                <!-- Conteúdo do Resultado -->
+                <div class="p-4 flex-1 overflow-y-auto space-y-4">
+                    <!-- Identificação do Aluno & Gabarito -->
+                    <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center justify-between text-xs">
+                        <div>
+                            <span class="text-slate-400 font-medium">Aluno(a):</span>
+                            <span id="res-student-name" class="font-extrabold text-slate-800 ml-1">Lucas Oliveira (9º A)</span>
+                        </div>
+                        <span id="res-gabarito-title" class="bg-blue-50 text-blue-800 font-bold px-2.5 py-1 rounded-full">Matemática</span>
+                    </div>
+
+                    <!-- Placar de Acertos e Erros -->
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm grid grid-cols-2 divide-x divide-slate-200">
+                        <!-- Acertos -->
+                        <div class="flex items-center justify-center gap-3 pr-2">
+                            <div class="w-12 h-12 rounded-full bg-[#22c55e] text-white flex items-center justify-center text-2xl shadow-md shadow-green-500/20 shrink-0">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xs font-extrabold text-slate-700">Acertos</div>
+                                <div id="res-hits" class="text-4xl font-black text-[#16a34a] leading-none mt-0.5">8</div>
+                            </div>
+                        </div>
+
+                        <!-- Erros -->
+                        <div class="flex items-center justify-center gap-3 pl-2">
+                            <div class="w-12 h-12 rounded-full bg-[#ef4444] text-white flex items-center justify-center text-2xl shadow-md shadow-red-500/20 shrink-0">
+                                <i class="fa-solid fa-xmark"></i>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xs font-extrabold text-slate-700">Erros</div>
+                                <div id="res-misses" class="text-4xl font-black text-[#dc2626] leading-none mt-0.5">2</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nota Final -->
+                    <div class="bg-gradient-to-b from-[#dbeafe] to-[#bfdbfe] border border-blue-300/80 rounded-2xl py-4 px-6 text-center shadow-sm">
+                        <div class="text-sm font-extrabold text-slate-800">Nota Final</div>
+                        <div id="res-score-percent" class="text-4xl font-black text-[#003b8e] mt-0.5">80%</div>
+                    </div>
+
+                    <!-- Detalhamento Questão por Questão -->
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-extrabold text-slate-800">Detalhamento</h3>
+                            <span class="text-[11px] text-slate-400 font-medium">Resposta marcada / Gabarito</span>
+                        </div>
+                        <div id="res-details-grid" class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                            <!-- Gerado via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões de Ação Inferiores -->
+                <div class="p-4 bg-white border-t border-slate-200 grid grid-cols-2 gap-2.5">
+                    <button onclick="navigate('corrigir')" class="bg-gradient-to-r from-[#0051ba] to-[#003b8e] hover:brightness-110 active:scale-[0.99] text-white font-bold py-3 px-3 rounded-full shadow-md flex items-center justify-center gap-2 text-xs transition">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Corrigir Novamente</span>
+                    </button>
+                    <button onclick="navigate('home')" class="bg-gradient-to-r from-[#16a34a] to-[#15803d] hover:brightness-110 active:scale-[0.99] text-white font-bold py-3 px-3 rounded-full shadow-md flex items-center justify-center gap-2 text-xs transition">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Voltar ao Menu</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 TELA 6: VER RESULTADOS (HISTÓRICO DE TURMA)
+            =========================================== -->
+            <section id="screen-historico" class="hidden flex-1 flex flex-col bg-[#f4f8ff] overflow-hidden">
+                <!-- Top App Bar -->
+                <div class="bg-[#003b8e] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+                    <button onclick="navigate('home')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-arrow-left text-lg"></i>
+                    </button>
+                    <h2 class="font-bold text-base">Desempenho e Histórico</h2>
+                    <button onclick="clearHistory()" title="Limpar Histórico" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
+                </div>
+
+                <div class="p-4 flex-1 overflow-y-auto space-y-4">
+                    <!-- Resumo Geral -->
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+                            <div class="text-[11px] font-semibold text-slate-400">Provas Corrigidas</div>
+                            <div id="hist-total-exams" class="text-xl font-black text-blue-900 mt-0.5">3</div>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+                            <div class="text-[11px] font-semibold text-slate-400">Média Geral</div>
+                            <div id="hist-avg-score" class="text-xl font-black text-emerald-600 mt-0.5">80%</div>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+                            <div class="text-[11px] font-semibold text-slate-400">Maior Nota</div>
+                            <div id="hist-max-score" class="text-xl font-black text-amber-500 mt-0.5">90%</div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Provas Corrigidas -->
+                    <div>
+                        <h3 class="text-xs font-extrabold text-slate-700 mb-2">Últimas Correções Realizadas:</h3>
+                        <div id="history-list" class="space-y-2.5">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-white border-t border-slate-200">
+                    <button onclick="navigate('corrigir')" class="w-full bg-[#004aad] hover:bg-blue-800 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2 text-sm transition">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Nova Correção</span>
+                    </button>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- CARD LATERAL DE DESTAQUES (Igual ao canto inferior direito da imagem) -->
+        <div class="w-full sm:w-[410px] lg:w-[340px] bg-gradient-to-b from-[#eff6ff] to-[#dbeafe] rounded-[32px] shadow-xl border-4 border-white p-6 flex flex-col justify-between relative overflow-hidden">
+            <div>
+                <div class="inline-flex items-center gap-2 bg-blue-600/10 text-blue-800 font-bold text-xs px-3 py-1 rounded-full mb-4">
+                    <i class="fa-solid fa-star text-amber-500"></i>
+                    <span>Como funciona o ProvaFácil</span>
+                </div>
+
+                <ul class="space-y-3.5 text-slate-800 font-bold text-sm">
+                    <li class="flex items-start gap-3">
+                        <span class="w-6 h-6 rounded-full bg-[#16a34a] text-white flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-sm">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <span>Cadastre seus gabaritos personalizados</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="w-6 h-6 rounded-full bg-[#16a34a] text-white flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-sm">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <div>
+                            <div>Gere cartões resposta</div>
+                            <div class="text-xs font-semibold text-slate-600 mt-0.5">Escaneie com a câmera ou interaja na tela</div>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="w-6 h-6 rounded-full bg-[#16a34a] text-white flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-sm">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <span>Veja acertos, erros e nota percentual na hora</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="w-6 h-6 rounded-full bg-[#16a34a] text-white flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-sm">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <span>Mais praticidade para professores e alunos!</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Ilustração Prancheta + Câmera (Fiel à imagem original) -->
+            <div class="mt-8 pt-4 flex items-end justify-center gap-4 relative z-10">
+                <!-- Ilustração SVG Prancheta -->
+                <div class="w-28 h-32 bg-white rounded-xl border-4 border-[#1e3a8a] shadow-lg p-2.5 relative transform -rotate-6">
+                    <div class="w-12 h-4 bg-slate-700 rounded-t-md mx-auto -mt-4 mb-2 border-2 border-white"></div>
+                    <div class="space-y-2.5 mt-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-4 h-4 rounded bg-emerald-500 text-white flex items-center justify-center text-[9px]"><i class="fa-solid fa-check"></i></span>
+                            <div class="h-2 bg-slate-300 rounded flex-1"></div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-4 h-4 rounded bg-emerald-500 text-white flex items-center justify-center text-[9px]"><i class="fa-solid fa-check"></i></span>
+                            <div class="h-2 bg-slate-300 rounded flex-1"></div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-4 h-4 rounded bg-emerald-500 text-white flex items-center justify-center text-[9px]"><i class="fa-solid fa-check"></i></span>
+                            <div class="h-2 bg-slate-300 rounded flex-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ilustração Câmera -->
+                <div class="w-24 h-20 bg-slate-800 rounded-2xl border-4 border-slate-600 shadow-xl flex items-center justify-center relative transform rotate-3">
+                    <div class="w-8 h-2.5 bg-slate-700 rounded-t-md absolute -top-3 left-4"></div>
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-900 via-blue-600 to-cyan-300 border-4 border-slate-300 flex items-center justify-center shadow-inner">
+                        <div class="w-4 h-4 rounded-full bg-white/40 -translate-x-1 -translate-y-1"></div>
+                    </div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-amber-400 absolute top-2 right-2"></div>
+                </div>
+            </div>
+
+            <!-- Faixa decorativa amarela e azul no rodapé do card -->
+            <svg viewBox="0 0 400 60" class="w-full h-14 absolute bottom-0 left-0 z-0" preserveAspectRatio="none">
+                <path d="M0,35 L400,5 L400,60 L0,60 Z" fill="#facc15"/>
+                <path d="M0,50 L400,22 L400,60 L0,60 Z" fill="#004aad"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         LÓGICA DO APLICATIVO (JAVASCRIPT)
+    =========================================== -->
+    <script>
+        const OPTIONS = ['A', 'B', 'C', 'D'];
+
+        // Estado Inicial idêntico ao da imagem enviada
+        let gabaritos = [
+            {
+                id: 'mat-10',
+                name: 'Matemática - 10 Questões',
+                count: 10,
+                // Exatamente como na imagem: 1:A, 2:C, 3:B, 4:D, 5:A, 6:C, 7:B, 8:D, 9:A, 10:C
+                answers: ['A', 'C', 'B', 'D', 'A', 'C', 'B', 'D', 'A', 'C']
+            },
+            {
+                id: 'port-10',
+                name: 'Português - Interpretação',
+                count: 10,
+                answers: ['B', 'A', 'C', 'D', 'B', 'A', 'D', 'C', 'B', 'A']
+            },
+            {
+                id: 'cien-08',
+                name: 'Ciências - Bimestral',
+                count: 8,
+                answers: ['C', 'D', 'A', 'B', 'C', 'A', 'B', 'D']
+            }
+        ];
+
+        let activeGabaritoIndex = 0;
+
+        // Respostas marcadas pelo aluno (Por padrão gera exatamente os 8 acertos e 2 erros na Q4 e Q10 como na imagem!)
+        // Gabarito: 1:A, 2:C, 3:B, 4:D, 5:A, 6:C, 7:B, 8:D, 9:A, 10:C
+        // Aluno marcou errado na 4 (marcou B em vez de D) e na 10 (marcou A em vez de C)
+        let studentAnswers = ['A', 'C', 'B', 'B', 'A', 'C', 'B', 'D', 'A', 'A'];
+
+        // Histórico de correções
+        let gradingHistory = [
+            {
+                studentName: 'Lucas Oliveira',
+                studentClass: '9º A',
+                gabaritoName: 'Matemática - 10 Questões',
+                hits: 8,
+                misses: 2,
+                score: 80,
+                date: 'Hoje, 09:40'
+            },
+            {
+                studentName: 'Mariana Costa',
+                studentClass: '9º A',
+                gabaritoName: 'Matemática - 10 Questões',
+                hits: 9,
+                misses: 1,
+                score: 90,
+                date: 'Hoje, 09:35'
+            },
+            {
+                studentName: 'Pedro Henrique',
+                studentClass: '9º B',
+                gabaritoName: 'Português - Interpretação',
+                hits: 7,
+                misses: 3,
+                score: 70,
+                date: 'Ontem'
+            }
+        ];
+
+        let cameraStream = null;
+
+        // Navegação entre as telas
+        function navigate(screenId) {
+            const screens = ['home', 'gabaritos', 'cartao', 'corrigir', 'resultado', 'historico'];
+            screens.forEach(s => {
+                document.getElementById(`screen-${s}`).classList.add('hidden');
+                const pill = document.getElementById(`pill-${s}`);
+                if (pill) {
+                    pill.classList.remove('bg-blue-600', 'text-white');
+                }
+            });
+
+            document.getElementById(`screen-${screenId}`).classList.remove('hidden');
+            const activePill = document.getElementById(`pill-${screenId}`);
+            if (activePill) {
+                activePill.classList.add('bg-blue-600', 'text-white');
+            }
+
+            // Atualiza dados da tela correspondente
+            if (screenId === 'gabaritos') renderGabaritoScreen();
+            if (screenId === 'cartao') renderCartaoScreen();
+            if (screenId === 'corrigir') renderScannerScreen();
+            if (screenId === 'resultado') renderResultadoScreen();
+            if (screenId === 'historico') renderHistoricoScreen();
+        }
+
+        // Exibe notificação Toast no topo do app
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toast-msg');
+            msg.textContent = message;
+            toast.classList.remove('opacity-0', '-translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', '-translate-y-2');
+            }, 2400);
+        }
+
+        // ==========================================
+        // FUNÇÕES: GERENCIAR GABARITOS
+        // ==========================================
+        function renderGabaritoScreen() {
+            const current = gabaritos[activeGabaritoIndex];
+
+            // Popula select de gabaritos salvos
+            const select = document.getElementById('saved-gabaritos-select');
+            select.innerHTML = gabaritos.map((g, idx) =>
+                `<option value="${idx}" ${idx === activeGabaritoIndex ? 'selected' : ''}>${g.name}</option>`
+            ).join('');
+
+            document.getElementById('gabarito-name-input').value = current.name;
+            document.getElementById('gabarito-count-display').textContent = current.count;
+
+            // Divide em 2 colunas estilo a imagem (1 a metade na esquerda, metade+1 ao fim na direita)
+            const half = Math.ceil(current.count / 2);
+            const grid = document.getElementById('gabarito-answers-grid');
+            grid.innerHTML = '';
+
+            for (let row = 0; row < half; row++) {
+                const leftIdx = row;
+                const rightIdx = row + half;
+
+                grid.appendChild(createGabaritoQuestionSelect(leftIdx, current.answers[leftIdx]));
+                if (rightIdx < current.count) {
+                    grid.appendChild(createGabaritoQuestionSelect(rightIdx, current.answers[rightIdx]));
+                } else {
+                    const empty = document.createElement('div');
+                    grid.appendChild(empty);
+                }
+            }
+        }
+
+        function createGabaritoQuestionSelect(questionIndex, selectedValue) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex items-center gap-2';
+
+            const badge = document.createElement('span');
+            badge.className = 'w-6 h-6 rounded-full bg-slate-100 text-slate-800 font-extrabold text-xs flex items-center justify-center shrink-0';
+            badge.textContent = questionIndex + 1;
+
+            const select = document.createElement('select');
+            select.className = 'flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+            select.innerHTML = OPTIONS.map(opt =>
+                `<option value="${opt}" ${opt === selectedValue ? 'selected' : ''}>${opt}</option>`
+            ).join('');
+
+            select.onchange = (e) => {
+                gabaritos[activeGabaritoIndex].answers[questionIndex] = e.target.value;
+            };
+
+            wrapper.appendChild(badge);
+            wrapper.appendChild(select);
+            return wrapper;
+        }
+
+        function loadSelectedGabarito(index) {
+            activeGabaritoIndex = parseInt(index, 10);
+            syncStudentAnswersLength();
+            renderGabaritoScreen();
+        }
+
+        function createNewGabarito() {
+            const newGab = {
+                id: 'gab-' + Date.now(),
+                name: `Nova Prova - 10 Questões`,
+                count: 10,
+                answers: Array(10).fill('A')
+            };
+            gabaritos.push(newGab);
+            activeGabaritoIndex = gabaritos.length - 1;
+            syncStudentAnswersLength();
+            renderGabaritoScreen();
+            showToast('Novo gabarito criado!');
+        }
+
+        function changeQuestionCount(delta) {
+            const current = gabaritos[activeGabaritoIndex];
+            const newCount = Math.min(20, Math.max(2, current.count + delta));
+            if (newCount === current.count) return;
+
+            current.count = newCount;
+            while (current.answers.length < newCount) {
+                current.answers.push(OPTIONS[current.answers.length % 4]);
+            }
+            current.answers = current.answers.slice(0, newCount);
+
+            syncStudentAnswersLength();
+            renderGabaritoScreen();
+            renderCartaoScreen();
+        }
+
+        function syncStudentAnswersLength() {
+            const target = gabaritos[activeGabaritoIndex].count;
+            while (studentAnswers.length < target) {
+                studentAnswers.push('A');
+            }
+            studentAnswers = studentAnswers.slice(0, target);
+        }
+
+        function randomizeGabaritoAnswers() {
+            const current = gabaritos[activeGabaritoIndex];
+            current.answers = current.answers.map(() => OPTIONS[Math.floor(Math.random() * OPTIONS.length)]);
+            renderGabaritoScreen();
+            showToast('Respostas sorteadas!');
+        }
+
+        function saveCurrentGabarito() {
+            const nameInput = document.getElementById('gabarito-name-input').value.trim();
+            if (nameInput) {
+                gabaritos[activeGabaritoIndex].name = nameInput;
+            }
+            renderGabaritoScreen();
+            showToast('Gabarito salvo com sucesso!');
+        }
+
+        // ==========================================
+        // FUNÇÕES: GERAR CARTÃO RESPOSTA
+        // ==========================================
+        function renderCartaoScreen() {
+            const current = gabaritos[activeGabaritoIndex];
+            const select = document.getElementById('cartao-gabarito-select');
+            select.innerHTML = gabaritos.map((g, idx) =>
+                `<option value="${idx}" ${idx === activeGabaritoIndex ? 'selected' : ''}>${g.name}</option>`
+            ).join('');
+
+            document.getElementById('cartao-count-display').textContent = current.count;
+
+            const half = Math.ceil(current.count / 2);
+            const grid = document.getElementById('cartao-bubbles-grid');
+            grid.innerHTML = '';
+
+            for (let row = 0; row < half; row++) {
+                const leftIdx = row;
+                const rightIdx = row + half;
+
+                grid.appendChild(createBubbleRow(leftIdx, false));
+                if (rightIdx < current.count) {
+                    grid.appendChild(createBubbleRow(rightIdx, false));
+                } else {
+                    grid.appendChild(document.createElement('div'));
+                }
+            }
+        }
+
+        function syncCartaoWithGabarito(index) {
+            activeGabaritoIndex = parseInt(index, 10);
+            syncStudentAnswersLength();
+            renderCartaoScreen();
+        }
+
+        // Cria uma linha de questão com bolinhas A B C D
+        function createBubbleRow(questionIndex, isScannerMode) {
+            const row = document.createElement('div');
+            row.className = 'flex items-center justify-between py-0.5';
+
+            const num = document.createElement('span');
+            num.className = 'font-bold text-slate-700 w-5 text-[11px]';
+            num.textContent = (questionIndex + 1) + '.';
+            row.appendChild(num);
+
+            const bubblesWrap = document.createElement('div');
+            bubblesWrap.className = 'flex items-center gap-1.5';
+
+            OPTIONS.forEach(opt => {
+                const isSelected = isScannerMode && studentAnswers[questionIndex] === opt;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `w-6 h-6 rounded-full border text-[10px] font-bold flex items-center justify-center transition ${
+                    isSelected
+                        ? 'bg-slate-800 text-white border-slate-900 shadow-inner scale-105'
+                        : 'bg-white text-slate-700 border-slate-400 hover:border-blue-600'
+                }`;
+                btn.textContent = opt;
+
+                btn.onclick = () => {
+                    studentAnswers[questionIndex] = opt;
+                    if (isScannerMode) {
+                        renderScannerScreen();
+                    } else {
+                        btn.classList.toggle('bg-slate-800');
+                        btn.classList.toggle('text-white');
+                    }
+                };
+
+                bubblesWrap.appendChild(btn);
+            });
+
+            row.appendChild(bubblesWrap);
+            return row;
+        }
+
+        // ==========================================
+        // FUNÇÕES: CORRIGIR PROVA (SCANNER)
+        // ==========================================
+        function renderScannerScreen() {
+            syncStudentAnswersLength();
+            const current = gabaritos[activeGabaritoIndex];
+            const half = Math.ceil(current.count / 2);
+            const grid = document.getElementById('scanner-bubbles-grid');
+            grid.innerHTML = '';
+
+            for (let row = 0; row < half; row++) {
+                const leftIdx = row;
+                const rightIdx = row + half;
+
+                grid.appendChild(createBubbleRow(leftIdx, true));
+                if (rightIdx < current.count) {
+                    grid.appendChild(createBubbleRow(rightIdx, true));
+                } else {
+                    grid.appendChild(document.createElement('div'));
+                }
+            }
+        }
+
+        function simulateRandomStudentSheet() {
+            const names = ['Ana Beatriz', 'Carlos Eduardo', 'Fernanda Lima', 'Gabriel Santos', 'Júlia Ferreira', 'Rafael Souza'];
+            const classes = ['9º A', '9º B', '1º EM', '3º EM'];
+            document.getElementById('student-name-input').value = names[Math.floor(Math.random() * names.length)];
+            document.getElementById('student-class-input').value = classes[Math.floor(Math.random() * classes.length)];
+
+            const current = gabaritos[activeGabaritoIndex];
+            studentAnswers = current.answers.map(correctAns => {
+                // 75% de chance de acertar cada questão para simular um aluno real
+                if (Math.random() < 0.75) return correctAns;
+                return OPTIONS[Math.floor(Math.random() * OPTIONS.length)];
+            });
+
+            renderScannerScreen();
+            showToast('Novo cartão de aluno carregado!');
+        }
+
+        async function toggleRealCamera() {
+            const video = document.getElementById('camera-video');
+            if (cameraStream) {
+                stopCamera();
+                showToast('Modo simulação ativado');
+                return;
+            }
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = cameraStream;
+                video.classList.remove('hidden');
+                showToast('Câmera ativa!');
+            } catch (err) {
+                showToast('Câmera indisponível neste ambiente. Usando simulador interativo.');
+            }
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            const video = document.getElementById('camera-video');
+            if (video) video.classList.add('hidden');
+        }
+
+        function gradeCurrentExam() {
+            stopCamera();
+            const current = gabaritos[activeGabaritoIndex];
+            let hits = 0;
+            for (let i = 0; i < current.count; i++) {
+                if (studentAnswers[i] === current.answers[i]) hits++;
+            }
+            const misses = current.count - hits;
+            const score = Math.round((hits / current.count) * 100);
+
+            const studentName = document.getElementById('student-name-input').value.trim() || 'Aluno Sem Nome';
+            const studentClass = document.getElementById('student-class-input').value.trim() || 'S/T';
+
+            gradingHistory.unshift({
+                studentName,
+                studentClass,
+                gabaritoName: current.name,
+                hits,
+                misses,
+                score,
+                date: 'Agora mesmo'
+            });
+
+            navigate('resultado');
+            showToast('Prova corrigida com precisão!');
+        }
+
+        // ==========================================
+        // FUNÇÕES: RESULTADO DA CORREÇÃO
+        // ==========================================
+        function renderResultadoScreen() {
+            const current = gabaritos[activeGabaritoIndex];
+            syncStudentAnswersLength();
+
+            let hits = 0;
+            for (let i = 0; i < current.count; i++) {
+                if (studentAnswers[i] === current.answers[i]) hits++;
+            }
+            const misses = current.count - hits;
+            const percent = Math.round((hits / current.count) * 100);
+
+            const studentName = document.getElementById('student-name-input').value.trim() || 'Lucas Oliveira';
+            const studentClass = document.getElementById('student-class-input').value.trim() || '9º A';
+
+            document.getElementById('res-student-name').textContent = `${studentName} (${studentClass})`;
+            document.getElementById('res-gabarito-title').textContent = current.name.split('-')[0].trim();
+            document.getElementById('res-hits').textContent = hits;
+            document.getElementById('res-misses').textContent = misses;
+            document.getElementById('res-score-percent').textContent = `${percent}%`;
+
+            // Detalhamento em 2 colunas fiel à imagem
+            const half = Math.ceil(current.count / 2);
+            const grid = document.getElementById('res-details-grid');
+            grid.innerHTML = '';
+
+            for (let row = 0; row < half; row++) {
+                const leftIdx = row;
+                const rightIdx = row + half;
+
+                grid.appendChild(createDetailItem(leftIdx, studentAnswers[leftIdx], current.answers[leftIdx]));
+                if (rightIdx < current.count) {
+                    grid.appendChild(createDetailItem(rightIdx, studentAnswers[rightIdx], current.answers[rightIdx]));
+                } else {
+                    grid.appendChild(document.createElement('div'));
+                }
+            }
+        }
+
+        function createDetailItem(index, studentAns, correctAns) {
+            const isCorrect = studentAns === correctAns;
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between border-b border-slate-100 pb-1';
+
+            item.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-slate-700 w-5">${index + 1}.</span>
+                    <span class="w-4 h-4 rounded flex items-center justify-center text-white text-[10px] ${isCorrect ? 'bg-[#22c55e]' : 'bg-[#ef4444]'}">
+                        <i class="fa-solid ${isCorrect ? 'fa-check' : 'fa-xmark'}"></i>
+                    </span>
+                    <span class="font-bold text-slate-800">${correctAns}</span>
+                </div>
+                ${!isCorrect ? `<span class="text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Marcou ${studentAns}</span>` : ''}
+            `;
+            return item;
+        }
+
+        // ==========================================
+        // FUNÇÕES: HISTÓRICO DE RESULTADOS
+        // ==========================================
+        function renderHistoricoScreen() {
+            const list = document.getElementById('history-list');
+            document.getElementById('hist-total-exams').textContent = gradingHistory.length;
+
+            if (gradingHistory.length === 0) {
+                document.getElementById('hist-avg-score').textContent = '0%';
+                document.getElementById('hist-max-score').textContent = '0%';
+                list.innerHTML = `
+                    <div class="bg-white rounded-xl p-6 text-center text-slate-400 text-xs border border-slate-200">
+                        Nenhuma correção registrada ainda.
+                    </div>
+                `;
+                return;
+            }
+
+            const avg = Math.round(gradingHistory.reduce((acc, item) => acc + item.score, 0) / gradingHistory.length);
+            const max = Math.max(...gradingHistory.map(item => item.score));
+
+            document.getElementById('hist-avg-score').textContent = `${avg}%`;
+            document.getElementById('hist-max-score').textContent = `${max}%`;
+
+            list.innerHTML = gradingHistory.map(item => `
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div class="font-extrabold text-slate-800 text-xs">${item.studentName} <span class="text-slate-400 font-semibold">(${item.studentClass})</span></div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">${item.gabaritoName} • ${item.date}</div>
+                        <div class="flex items-center gap-3 mt-1.5 text-[11px] font-bold">
+                            <span class="text-emerald-600"><i class="fa-solid fa-check mr-1"></i>${item.hits} acertos</span>
+                            <span class="text-red-500"><i class="fa-solid fa-xmark mr-1"></i>${item.misses} erros</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-block px-3 py-1.5 rounded-xl font-black text-base ${
+                            item.score >= 70 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                        }">
+                            ${item.score}%
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearHistory() {
+            gradingHistory = [];
+            renderHistoricoScreen();
+            showToast('Histórico limpo!');
+        }
+
+        // Inicialização
+        window.onload = () => {
+            renderGabaritoScreen();
+            renderCartaoScreen();
+            renderScannerScreen();
+            renderResultadoScreen();
+        };
+    </script>
+</body>
+</html>
