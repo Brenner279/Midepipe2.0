@@ -881,6 +881,7 @@
             if (!Number.isInteger(selectedIndex) || !gabaritos[selectedIndex]) return;
             activeGabaritoIndex = selectedIndex;
             studentAnswers = Array(gabaritos[activeGabaritoIndex].count).fill(null);
+            scanStatuses = [];
             renderGabaritoScreen();
             renderCartaoScreen();
             renderScannerScreen();
@@ -1126,35 +1127,302 @@
             showToast('Novo cartão de aluno carregado!');
         }
 
+        function setOMRStatus(message, isError) {
+            const status=document.getElementById('omr-status');
+            if(!status)return;
+            status.textContent=message;
+            status.className=isError
+                ? 'bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-800'
+                : 'bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-700';
+        }
+
+        function updateOpenCVStatus() {
+            if(window.opencvReady && window.cv){
+                setOMRStatus('Leitor OMR pronto. Use a câmera ou envie uma foto do cartão.',false);
+            }else if(window.opencvLoadFailed){
+                setOMRStatus('Não foi possível carregar o OpenCV.js. Verifique a internet e atualize a página; a marcação manual continua disponível.',true);
+            }else{
+                setOMRStatus('Carregando o motor OMR. Mantenha a internet ativa na primeira abertura.',false);
+            }
+        }
+        window.addEventListener('opencv-ready',updateOpenCVStatus);
+
         async function toggleRealCamera() {
-            const video = document.getElementById('camera-video');
-            if (cameraStream) {
+            const video=document.getElementById('camera-video');
+            if(cameraStream){
                 stopCamera();
-                showToast('Modo simulação ativado');
+                setOMRStatus('Câmera desligada. Você ainda pode enviar uma foto do cartão.',false);
                 return;
             }
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                video.srcObject = cameraStream;
+            if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+                setOMRStatus('Este navegador não liberou a câmera. Abra o site em HTTPS ou envie uma foto.',true);
+                return;
+            }
+            try{
+                cameraStream=await navigator.mediaDevices.getUserMedia({
+                    video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},
+                    audio:false
+                });
+                video.srcObject=cameraStream;
                 video.classList.remove('hidden');
-                showToast('Câmera ativa!');
-            } catch (err) {
-                showToast('Câmera indisponível neste ambiente. Usando simulador interativo.');
+                await video.play();
+                setOMRStatus('Câmera ativa. Enquadre a folha inteira e toque em “Capturar e ler”.',false);
+            }catch(error){
+                stopCamera();
+                setOMRStatus('Não foi possível abrir a câmera: '+(error.message||'permissão negada')+'. Você pode enviar uma foto.',true);
             }
         }
 
         function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraStream = null;
+            if(cameraStream){
+                cameraStream.getTracks().forEach(track=>track.stop());
+                cameraStream=null;
             }
-            const video = document.getElementById('camera-video');
-            if (video) video.classList.add('hidden');
+            const video=document.getElementById('camera-video');
+            if(video){
+                video.pause();
+                video.srcObject=null;
+                video.classList.add('hidden');
+            }
+        }
+
+        function drawSourceToCanvas(source,width,height) {
+            const canvas=document.getElementById('omr-processing-canvas');
+            const maxDimension=2200;
+            const scale=Math.min(1,maxDimension/Math.max(width,height));
+            canvas.width=Math.max(1,Math.round(width*scale));
+            canvas.height=Math.max(1,Math.round(height*scale));
+            const context=canvas.getContext('2d',{willReadFrequently:true});
+            context.clearRect(0,0,canvas.width,canvas.height);
+            context.drawImage(source,0,0,canvas.width,canvas.height);
+            return canvas;
+        }
+
+        function captureAndAnalyze() {
+            const video=document.getElementById('camera-video');
+            if(!cameraStream || !video.videoWidth){
+                setOMRStatus('Ative a câmera ou envie uma foto antes de capturar.',true);
+                return;
+            }
+            analyzeOMRCanvas(drawSourceToCanvas(video,video.videoWidth,video.videoHeight));
+        }
+
+        function handleOMRFile(file) {
+            if(!file)return;
+            stopCamera();
+            if(!file.type || !file.type.startsWith('image/')){
+                setOMRStatus('Selecione uma imagem JPG, PNG ou outro formato de foto compatível.',true);
+                return;
+            }
+            const reader=new FileReader();
+            reader.onerror=()=>setOMRStatus('Não foi possível abrir a imagem selecionada.',true);
+            reader.onload=()=>{
+                const image=new Image();
+                image.onerror=()=>setOMRStatus('A imagem não pôde ser decodificada. Tente outra foto.',true);
+                image.onload=()=>{
+                    analyzeOMRCanvas(drawSourceToCanvas(image,image.naturalWidth,image.naturalHeight));
+                };
+                image.src=reader.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function findOMRCornerMarkers(gray,cv) {
+            const blurred=new cv.Mat();
+            const binary=new cv.Mat();
+            const contours=new cv.MatVector();
+            const hierarchy=new cv.Mat();
+            const candidates=[];
+            try{
+                cv.GaussianBlur(gray,blurred,new cv.Size(5,5),0,0,cv.BORDER_DEFAULT);
+                cv.threshold(blurred,binary,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU);
+                cv.findContours(binary,contours,hierarchy,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
+                const minDimension=Math.min(gray.cols,gray.rows);
+                for(let i=0;i<contours.size();i++){
+                    const contour=contours.get(i);
+                    const approx=new cv.Mat();
+                    try{
+                        const perimeter=cv.arcLength(contour,true);
+                        cv.approxPolyDP(contour,approx,0.035*perimeter,true);
+                        if(approx.rows!==4)continue;
+                        const area=Math.abs(cv.contourArea(approx));
+                        const rect=cv.boundingRect(approx);
+                        const ratio=rect.width/Math.max(1,rect.height);
+                        const fill=area/Math.max(1,rect.width*rect.height);
+                        const relativeSide=rect.width/minDimension;
+                        if(ratio<0.78 || ratio>1.22 || fill<0.78 ||
+                            relativeSide<0.008 || relativeSide>0.12 ||
+                            area<minDimension*minDimension*0.00008)continue;
+                        candidates.push({
+                            x:rect.x+rect.width/2,
+                            y:rect.y+rect.height/2,
+                            area:area
+                        });
+                    }finally{
+                        approx.delete();
+                        contour.delete();
+                    }
+                }
+            }finally{
+                blurred.delete();
+                binary.delete();
+                contours.delete();
+                hierarchy.delete();
+            }
+            if(candidates.length<4){
+                throw new Error('Não encontrei os quatro marcadores pretos. Confira se a folha inteira aparece na foto e se os cantos não estão cortados.');
+            }
+            candidates.sort((a,b)=>b.area-a.area);
+            const selected=candidates.slice(0,4);
+            const sums=selected.map(p=>p.x+p.y);
+            const diffs=selected.map(p=>p.x-p.y);
+            const topLeft=selected[sums.indexOf(Math.min(...sums))];
+            const bottomRight=selected[sums.indexOf(Math.max(...sums))];
+            const topRight=selected[diffs.indexOf(Math.max(...diffs))];
+            const bottomLeft=selected[diffs.indexOf(Math.min(...diffs))];
+            const ordered=[topLeft,topRight,bottomRight,bottomLeft];
+            if(new Set(ordered).size!==4){
+                throw new Error('Não consegui ordenar os marcadores. Fotografe a folha na posição vertical, sem cortar os cantos.');
+            }
+            return ordered;
+        }
+
+        function measureBubbleMark(gray,centerX,centerY) {
+            const radius=5;
+            let darkPixels=0;
+            let totalPixels=0;
+            for(let dy=-radius;dy<=radius;dy++){
+                for(let dx=-radius;dx<=radius;dx++){
+                    if(dx*dx+dy*dy>radius*radius)continue;
+                    const x=Math.round(centerX+dx);
+                    const y=Math.round(centerY+dy);
+                    if(x<0 || y<0 || x>=gray.cols || y>=gray.rows)continue;
+                    if(gray.ucharPtr(y,x)[0]<172)darkPixels++;
+                    totalPixels++;
+                }
+            }
+            return totalPixels?darkPixels/totalPixels:0;
+        }
+
+        function readOMRAnswers(gray,current) {
+            const columnX=[76,300,524,748];
+            const startY=320;
+            const rowGap=40;
+            const answers=[];
+            const statuses=[];
+            for(let question=0;question<current.count;question++){
+                const column=question%4;
+                const row=Math.floor(question/4);
+                const x=columnX[column];
+                const y=startY+row*rowGap;
+                const ratios=current.options.map((letter,optionIndex)=>
+                    measureBubbleMark(gray,x+48+optionIndex*17,y)
+                );
+                const strong=ratios.map((value,index)=>value>=0.22?index:-1).filter(index=>index>=0);
+                const weak=ratios.map((value,index)=>value>=0.10?index:-1).filter(index=>index>=0);
+                if(strong.length>1){
+                    answers.push(null);
+                    statuses.push({status:'multiple',ratios:ratios});
+                }else if(strong.length===1 && weak.length===1){
+                    answers.push(current.options[strong[0]]);
+                    statuses.push({status:'ok',ratios:ratios});
+                }else if(strong.length===1 || weak.length>0){
+                    answers.push(null);
+                    statuses.push({status:'uncertain',ratios:ratios});
+                }else{
+                    answers.push(null);
+                    statuses.push({status:'blank',ratios:ratios});
+                }
+            }
+            return {answers:answers,statuses:statuses};
+        }
+
+        function updateOMRSummary() {
+            const box=document.getElementById('omr-scan-summary');
+            if(!box)return;
+            const counts={ok:0,blank:0,multiple:0,uncertain:0,manual:0,simulated:0};
+            scanStatuses.forEach(item=>{
+                if(item && counts[item.status]!==undefined)counts[item.status]++;
+            });
+            const scanned=counts.ok+counts.blank+counts.multiple+counts.uncertain;
+            if(!scanned && !counts.manual && !counts.simulated){
+                box.classList.add('hidden');
+                return;
+            }
+            box.classList.remove('hidden');
+            box.innerHTML=''
+                +'<div class="font-extrabold text-slate-800 mb-1">Resumo da leitura</div>'
+                +'<div class="grid grid-cols-2 gap-1 text-[11px]">'
+                +'<span class="text-emerald-700">Lidas: '+counts.ok+'</span>'
+                +'<span class="text-slate-600">Em branco: '+counts.blank+'</span>'
+                +'<span class="text-red-600">Duplas: '+counts.multiple+'</span>'
+                +'<span class="text-amber-700">Duvidosas: '+counts.uncertain+'</span>'
+                +'</div>'
+                +(counts.multiple+counts.uncertain
+                    ?'<p class="text-red-700 font-semibold mt-2">Revise as questões com “!” antes de corrigir.</p>'
+                    :'<p class="text-emerald-700 font-semibold mt-2">Confira as respostas e prossiga para a correção.</p>');
+        }
+
+        function analyzeOMRCanvas(sourceCanvas) {
+            if(!window.opencvReady || !window.cv || !window.cv.Mat){
+                updateOpenCVStatus();
+                setOMRStatus('O motor OMR ainda não está pronto. Aguarde o carregamento ou utilize a revisão manual.',true);
+                return;
+            }
+            const cv=window.cv;
+            let source=null,gray=null,transform=null,warped=null,warpedGray=null,smooth=null;
+            try{
+                setOMRStatus('Analisando a imagem e procurando os quatro marcadores...',false);
+                source=cv.imread(sourceCanvas);
+                gray=new cv.Mat();
+                cv.cvtColor(source,gray,source.channels()===4?cv.COLOR_RGBA2GRAY:cv.COLOR_BGR2GRAY);
+                const corners=findOMRCornerMarkers(gray,cv);
+                const sourcePoints=cv.matFromArray(4,1,cv.CV_32FC2,[
+                    corners[0].x,corners[0].y,corners[1].x,corners[1].y,
+                    corners[2].x,corners[2].y,corners[3].x,corners[3].y
+                ]);
+                const destinationPoints=cv.matFromArray(4,1,cv.CV_32FC2,[42,42,958,42,958,1358,42,1358]);
+                transform=cv.getPerspectiveTransform(sourcePoints,destinationPoints);
+                sourcePoints.delete();
+                destinationPoints.delete();
+                warped=new cv.Mat();
+                cv.warpPerspective(source,warped,transform,new cv.Size(1000,1400),
+                    cv.INTER_LINEAR,cv.BORDER_CONSTANT,new cv.Scalar(255,255,255,255));
+                warpedGray=new cv.Mat();
+                cv.cvtColor(warped,warpedGray,warped.channels()===4?cv.COLOR_RGBA2GRAY:cv.COLOR_BGR2GRAY);
+                smooth=new cv.Mat();
+                cv.GaussianBlur(warpedGray,smooth,new cv.Size(3,3),0,0,cv.BORDER_DEFAULT);
+                const result=readOMRAnswers(smooth,gabaritos[activeGabaritoIndex]);
+                studentAnswers=result.answers;
+                scanStatuses=result.statuses;
+                const output=document.getElementById('omr-output-canvas');
+                output.width=1000;
+                output.height=1400;
+                cv.imshow(output,warped);
+                output.classList.remove('hidden');
+                renderScannerScreen();
+                const issues=scanStatuses.filter(item=>item.status==='multiple'||item.status==='uncertain').length;
+                setOMRStatus('Leitura concluída. '+result.answers.filter(Boolean).length+' respostas identificadas; '+
+                    result.statuses.filter(item=>item.status==='blank').length+' em branco; '+issues+
+                    ' para revisão. Informe nome e turma manualmente.',false);
+            }catch(error){
+                setOMRStatus(error.message||'Falha ao interpretar o cartão. Tente outra foto com melhor iluminação.',true);
+            }finally{
+                [source,gray,transform,warped,warpedGray,smooth].forEach(matrix=>{
+                    if(matrix && typeof matrix.delete==='function')matrix.delete();
+                });
+            }
         }
 
         function gradeCurrentExam() {
             stopCamera();
             const current = gabaritos[activeGabaritoIndex];
+            const pendingReview=scanStatuses.filter(item=>item && (item.status==='multiple'||item.status==='uncertain')).length;
+            if(pendingReview>0){
+                setOMRStatus('Há '+pendingReview+' questão(ões) com marcação dupla ou duvidosa. Toque na alternativa correta em cada questão destacada antes de corrigir.',true);
+                showToast('Revise as marcações destacadas.');
+                return;
+            }
             let hits = 0;
             for (let i = 0; i < current.count; i++) {
                 if (studentAnswers[i] === current.answers[i]) hits++;
@@ -1196,8 +1464,8 @@
             const misses = current.count - hits;
             const percent = Math.round((hits / current.count) * 100);
 
-            const studentName = document.getElementById('student-name-input').value.trim() || 'Lucas Oliveira';
-            const studentClass = document.getElementById('student-class-input').value.trim() || '9º A';
+            const studentName = document.getElementById('student-name-input').value.trim() || 'Aluno Sem Nome';
+            const studentClass = document.getElementById('student-class-input').value.trim() || 'S/T';
 
             document.getElementById('res-student-name').textContent = `${studentName} (${studentClass})`;
             document.getElementById('res-gabarito-title').textContent = current.subject;
@@ -1299,6 +1567,7 @@
             renderCartaoScreen();
             renderScannerScreen();
             renderResultadoScreen();
+            updateOpenCVStatus();
         };
     </script>
 </body>
