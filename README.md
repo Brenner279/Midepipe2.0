@@ -26,7 +26,7 @@ O cartão foi padronizado em um desenho vetorial com quatro marcadores quadrados
 3. Abra **Gerar Cartão Resposta** e selecione o mesmo gabarito que será utilizado na correção.
 4. Imprima em papel A4, em **escala 100%**, sem a opção “ajustar à página”.
 5. Oriente o aluno a preencher completamente uma bolha por questão, usando caneta escura. Não dobre nem corte os quatro marcadores dos cantos.
-6. Abra **Ler Cartão-Resposta** e selecione o mesmo gabarito.
+6. Abra **Ler Cartão-Resposta** e selecione, na própria tela de correção, o mesmo gabarito usado para imprimir a folha.
 7. Ative a câmera traseira ou envie uma foto nítida da folha inteira.
 8. Confira o alinhamento e o resumo da leitura. Questões com marcação dupla ou duvidosa são destacadas; toque na alternativa correta para ajustar.
 9. Informe nome e turma e toque em **Corrigir**.
