@@ -93,7 +93,7 @@
             window.dispatchEvent(new Event('opencv-ready'));
         };
     </script>
-    <script async src="https://docs.opencv.org/4.x/opencv.js" onerror="window.opencvLoadFailed = true"></script>
+    <script async src="https://docs.opencv.org/4.x/opencv.js" onerror="window.opencvLoadFailed = true; window.dispatchEvent(new Event('opencv-ready'))"></script>
 </head>
 <body class="flex flex-col items-center justify-center p-0 sm:p-4 md:p-6">
 
@@ -899,6 +899,7 @@
             gabaritos.push(newGab);
             activeGabaritoIndex = gabaritos.length - 1;
             studentAnswers = Array(newGab.count).fill(null);
+            scanStatuses = [];
             persistAppData();
             renderGabaritoScreen();
             showToast('Novo gabarito criado!');
@@ -908,6 +909,7 @@
             const current = gabaritos[activeGabaritoIndex];
             const newCount = Math.min(100, Math.max(1, Number.parseInt(value, 10) || 1));
             current.count = newCount;
+            scanStatuses = [];
 
             while (current.answers.length < newCount) {
                 current.answers.push(current.options[0]);
@@ -926,6 +928,7 @@
         function changeOptionCount(value) {
             const current = gabaritos[activeGabaritoIndex];
             current.options = buildOptions(value);
+            scanStatuses = [];
             current.answers = current.answers.map((answer) =>
                 current.options.includes(answer) ? answer : current.options[0]
             );
@@ -1357,6 +1360,7 @@
                 +'<span class="text-slate-600">Em branco: '+counts.blank+'</span>'
                 +'<span class="text-red-600">Duplas: '+counts.multiple+'</span>'
                 +'<span class="text-amber-700">Duvidosas: '+counts.uncertain+'</span>'
+                +'<span class="text-blue-700">Ajustadas: '+counts.manual+'</span>'
                 +'</div>'
                 +(counts.multiple+counts.uncertain
                     ?'<p class="text-red-700 font-semibold mt-2">Revise as questões com “!” antes de corrigir.</p>'
