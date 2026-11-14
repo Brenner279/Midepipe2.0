@@ -252,25 +252,44 @@
                         </button>
                     </div>
 
-                    <!-- Nome do Gabarito -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Nome do Gabarito:</label>
-                        <input id="gabarito-name-input" type="text" value="Matemática - 10 Questões"
-                            class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- Identificação da avaliação -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Disciplina:</label>
+                            <input id="gabarito-subject-input" type="text" value="Matemática" maxlength="60"
+                                oninput="updateCurrentGabaritoField('subject', this.value)"
+                                placeholder="Ex.: Matemática, História, Ciências..."
+                                class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Nome da avaliação / gabarito:</label>
+                            <input id="gabarito-name-input" type="text" value="Avaliação Bimestral" maxlength="80"
+                                oninput="updateCurrentGabaritoField('name', this.value)"
+                                placeholder="Ex.: Avaliação Bimestral"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
                     </div>
 
-                    <!-- Quantidade de Questões -->
-                    <div class="text-center">
-                        <label class="block text-xs font-bold text-slate-700 text-left mb-2">Quantidade de Questões:</label>
-                        <div class="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-                            <button onclick="changeQuestionCount(-1)" class="w-10 h-9 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-lg flex items-center justify-center transition">
-                                <i class="fa-solid fa-minus text-xs"></i>
-                            </button>
-                            <span id="gabarito-count-display" class="w-16 text-center font-extrabold text-base text-slate-800">10</span>
-                            <button onclick="changeQuestionCount(1)" class="w-10 h-9 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-lg flex items-center justify-center transition">
-                                <i class="fa-solid fa-plus text-xs"></i>
-                            </button>
+                    <!-- Configurações da folha -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Quantidade de questões:</label>
+                            <input id="gabarito-count-input" type="number" min="1" max="100" step="1" value="10"
+                                onchange="changeQuestionCount(this.value)"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-[10px] text-slate-500 mt-1">De 1 a 100 questões</p>
                         </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Alternativas por questão:</label>
+                            <select id="gabarito-options-count" onchange="changeOptionCount(this.value)"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </select>
+                            <p class="text-[10px] text-slate-500 mt-1">Letras de A em diante</p>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-900">
+                        <span class="font-bold">Alternativas configuradas:</span>
+                        <span id="gabarito-options-preview">A, B, C, D</span>
                     </div>
 
                     <!-- Respostas Corretas -->
@@ -327,24 +346,17 @@
                         </select>
                     </div>
 
-                    <!-- Quantidade de Questões -->
-                    <div class="text-center">
-                        <label class="block text-xs font-bold text-slate-700 text-left mb-1.5">Quantidade de Questões:</label>
-                        <div class="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-                            <button onclick="changeQuestionCount(-1)" class="w-10 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold flex items-center justify-center transition">
-                                <i class="fa-solid fa-minus text-xs"></i>
-                            </button>
-                            <span id="cartao-count-display" class="w-14 text-center font-extrabold text-sm text-slate-800">10</span>
-                            <button onclick="changeQuestionCount(1)" class="w-10 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold flex items-center justify-center transition">
-                                <i class="fa-solid fa-plus text-xs"></i>
-                            </button>
-                        </div>
+                    <div class="text-center text-xs font-semibold text-slate-600">
+                        Quantidade de questões: <span id="cartao-count-display" class="font-extrabold text-blue-900">10</span>
                     </div>
 
                     <!-- Preview do Cartão Resposta Imprimível -->
                     <div id="printable-card-area" class="bg-white border-2 border-[#1e3a8a]/30 rounded-2xl p-3.5 shadow-sm">
-                        <div class="bg-[#003b8e] text-white text-center font-extrabold text-sm py-1.5 rounded-lg tracking-wide mb-3">
+                        <div class="bg-[#003b8e] text-white text-center font-extrabold text-sm py-1.5 rounded-lg tracking-wide mb-2">
                             CARTÃO RESPOSTA
+                        </div>
+                        <div class="text-center text-[11px] font-bold text-blue-900 mb-3">
+                            Disciplina: <span id="cartao-subject-label">Matemática</span>
                         </div>
 
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700 mb-3">
@@ -684,70 +696,114 @@
          LÓGICA DO APLICATIVO (JAVASCRIPT)
     =========================================== -->
     <script>
-        const OPTIONS = ['A', 'B', 'C', 'D'];
+        const STORAGE_KEYS = {
+            gabaritos: 'provafacil:gabaritos:v1',
+            historico: 'provafacil:historico:v1'
+        };
 
-        // Estado Inicial idêntico ao da imagem enviada
-        let gabaritos = [
+        function buildOptions(amount) {
+            const safeAmount = Math.min(10, Math.max(2, Number(amount) || 4));
+            return Array.from({ length: safeAmount }, (_, index) => String.fromCharCode(65 + index));
+        }
+
+        function loadStoredData(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch (error) {
+                console.warn('Não foi possível ler os dados locais:', error);
+                return fallback;
+            }
+        }
+
+        function normalizeGabarito(item) {
+            const source = item && typeof item === 'object' ? item : {};
+            const optionAmount = Array.isArray(source.options)
+                ? source.options.length
+                : (source.optionCount || 4);
+            const options = buildOptions(optionAmount);
+            const count = Math.min(100, Math.max(1, Number(source.count) || 10));
+            const oldAnswers = Array.isArray(source.answers) ? source.answers : [];
+            const answers = Array.from({ length: count }, (_, index) => {
+                const answer = oldAnswers[index];
+                return options.includes(answer) ? answer : options[0];
+            });
+
+            return {
+                id: source.id || ('gab-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)),
+                subject: String(source.subject || (source.name ? source.name.split('-')[0].trim() : 'Disciplina')),
+                name: String(source.name || 'Nova avaliação'),
+                count,
+                options,
+                answers
+            };
+        }
+
+        function escapeHTML(value) {
+            return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[character];
+            });
+        }
+
+        function persistAppData() {
+            try {
+                localStorage.setItem(STORAGE_KEYS.gabaritos, JSON.stringify(gabaritos));
+                localStorage.setItem(STORAGE_KEYS.historico, JSON.stringify(gradingHistory));
+            } catch (error) {
+                console.warn('Não foi possível salvar os dados neste navegador:', error);
+            }
+        }
+
+        const DEFAULT_GABARITOS = [
             {
                 id: 'mat-10',
-                name: 'Matemática - 10 Questões',
+                subject: 'Matemática',
+                name: 'Avaliação Bimestral',
                 count: 10,
-                // Exatamente como na imagem: 1:A, 2:C, 3:B, 4:D, 5:A, 6:C, 7:B, 8:D, 9:A, 10:C
+                options: buildOptions(4),
                 answers: ['A', 'C', 'B', 'D', 'A', 'C', 'B', 'D', 'A', 'C']
             },
             {
                 id: 'port-10',
-                name: 'Português - Interpretação',
+                subject: 'Língua Portuguesa',
+                name: 'Interpretação de Texto',
                 count: 10,
+                options: buildOptions(4),
                 answers: ['B', 'A', 'C', 'D', 'B', 'A', 'D', 'C', 'B', 'A']
             },
             {
                 id: 'cien-08',
-                name: 'Ciências - Bimestral',
+                subject: 'Ciências',
+                name: 'Avaliação Bimestral',
                 count: 8,
+                options: buildOptions(4),
                 answers: ['C', 'D', 'A', 'B', 'C', 'A', 'B', 'D']
             }
         ];
 
+        let gabaritos = loadStoredData(STORAGE_KEYS.gabaritos, DEFAULT_GABARITOS);
+        if (!Array.isArray(gabaritos) || gabaritos.length === 0) {
+            gabaritos = DEFAULT_GABARITOS;
+        }
+        gabaritos = gabaritos.map(normalizeGabarito);
+
         let activeGabaritoIndex = 0;
 
-        // Respostas marcadas pelo aluno (Por padrão gera exatamente os 8 acertos e 2 erros na Q4 e Q10 como na imagem!)
-        // Gabarito: 1:A, 2:C, 3:B, 4:D, 5:A, 6:C, 7:B, 8:D, 9:A, 10:C
-        // Aluno marcou errado na 4 (marcou B em vez de D) e na 10 (marcou A em vez de C)
+        // Respostas de demonstração para a primeira avaliação.
         let studentAnswers = ['A', 'C', 'B', 'B', 'A', 'C', 'B', 'D', 'A', 'A'];
 
-        // Histórico de correções
-        let gradingHistory = [
-            {
-                studentName: 'Lucas Oliveira',
-                studentClass: '9º A',
-                gabaritoName: 'Matemática - 10 Questões',
-                hits: 8,
-                misses: 2,
-                score: 80,
-                date: 'Hoje, 09:40'
-            },
-            {
-                studentName: 'Mariana Costa',
-                studentClass: '9º A',
-                gabaritoName: 'Matemática - 10 Questões',
-                hits: 9,
-                misses: 1,
-                score: 90,
-                date: 'Hoje, 09:35'
-            },
-            {
-                studentName: 'Pedro Henrique',
-                studentClass: '9º B',
-                gabaritoName: 'Português - Interpretação',
-                hits: 7,
-                misses: 3,
-                score: 70,
-                date: 'Ontem'
-            }
-        ];
+        // O histórico começa vazio; somente correções feitas pelo usuário são registradas.
+        let gradingHistory = loadStoredData(STORAGE_KEYS.historico, []);
+        if (!Array.isArray(gradingHistory)) gradingHistory = [];
 
         let cameraStream = null;
+        persistAppData();
 
         // Navegação entre as telas
         function navigate(screenId) {
@@ -793,16 +849,31 @@
         function renderGabaritoScreen() {
             const current = gabaritos[activeGabaritoIndex];
 
-            // Popula select de gabaritos salvos
-            const select = document.getElementById('saved-gabaritos-select');
-            select.innerHTML = gabaritos.map((g, idx) =>
-                `<option value="${idx}" ${idx === activeGabaritoIndex ? 'selected' : ''}>${g.name}</option>`
-            ).join('');
+            const savedSelect = document.getElementById('saved-gabaritos-select');
+            savedSelect.innerHTML = '';
+            gabaritos.forEach((g, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = g.subject + ' • ' + g.name;
+                option.selected = index === activeGabaritoIndex;
+                savedSelect.appendChild(option);
+            });
 
+            document.getElementById('gabarito-subject-input').value = current.subject;
             document.getElementById('gabarito-name-input').value = current.name;
-            document.getElementById('gabarito-count-display').textContent = current.count;
+            document.getElementById('gabarito-count-input').value = current.count;
 
-            // Divide em 2 colunas estilo a imagem (1 a metade na esquerda, metade+1 ao fim na direita)
+            const optionsSelect = document.getElementById('gabarito-options-count');
+            optionsSelect.innerHTML = '';
+            for (let amount = 2; amount <= 10; amount++) {
+                const option = document.createElement('option');
+                option.value = amount;
+                option.textContent = amount + ' alternativas (A–' + String.fromCharCode(64 + amount) + ')';
+                option.selected = amount === current.options.length;
+                optionsSelect.appendChild(option);
+            }
+            document.getElementById('gabarito-options-preview').textContent = current.options.join(', ');
+
             const half = Math.ceil(current.count / 2);
             const grid = document.getElementById('gabarito-answers-grid');
             grid.innerHTML = '';
@@ -810,13 +881,11 @@
             for (let row = 0; row < half; row++) {
                 const leftIdx = row;
                 const rightIdx = row + half;
-
                 grid.appendChild(createGabaritoQuestionSelect(leftIdx, current.answers[leftIdx]));
                 if (rightIdx < current.count) {
                     grid.appendChild(createGabaritoQuestionSelect(rightIdx, current.answers[rightIdx]));
                 } else {
-                    const empty = document.createElement('div');
-                    grid.appendChild(empty);
+                    grid.appendChild(document.createElement('div'));
                 }
             }
         }
@@ -831,12 +900,18 @@
 
             const select = document.createElement('select');
             select.className = 'flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
-            select.innerHTML = OPTIONS.map(opt =>
-                `<option value="${opt}" ${opt === selectedValue ? 'selected' : ''}>${opt}</option>`
-            ).join('');
+            const current = gabaritos[activeGabaritoIndex];
+            current.options.forEach((letter) => {
+                const option = document.createElement('option');
+                option.value = letter;
+                option.textContent = letter;
+                option.selected = letter === selectedValue;
+                select.appendChild(option);
+            });
 
-            select.onchange = (e) => {
-                gabaritos[activeGabaritoIndex].answers[questionIndex] = e.target.value;
+            select.onchange = (event) => {
+                current.answers[questionIndex] = event.target.value;
+                persistAppData();
             };
 
             wrapper.appendChild(badge);
@@ -844,64 +919,112 @@
             return wrapper;
         }
 
+        function updateCurrentGabaritoField(field, value) {
+            if (field !== 'subject' && field !== 'name') return;
+            gabaritos[activeGabaritoIndex][field] = value;
+            persistAppData();
+        }
+
         function loadSelectedGabarito(index) {
-            activeGabaritoIndex = parseInt(index, 10);
-            syncStudentAnswersLength();
+            const selectedIndex = Number.parseInt(index, 10);
+            if (!Number.isInteger(selectedIndex) || !gabaritos[selectedIndex]) return;
+            activeGabaritoIndex = selectedIndex;
+            studentAnswers = Array(gabaritos[activeGabaritoIndex].count).fill(null);
             renderGabaritoScreen();
+            renderCartaoScreen();
+            renderScannerScreen();
         }
 
         function createNewGabarito() {
-            const newGab = {
+            const newGab = normalizeGabarito({
                 id: 'gab-' + Date.now(),
-                name: `Nova Prova - 10 Questões`,
+                subject: 'Nova disciplina',
+                name: 'Nova avaliação',
                 count: 10,
+                options: buildOptions(4),
                 answers: Array(10).fill('A')
-            };
+            });
             gabaritos.push(newGab);
             activeGabaritoIndex = gabaritos.length - 1;
-            syncStudentAnswersLength();
+            studentAnswers = Array(newGab.count).fill(null);
+            persistAppData();
             renderGabaritoScreen();
             showToast('Novo gabarito criado!');
         }
 
-        function changeQuestionCount(delta) {
+        function changeQuestionCount(value) {
             const current = gabaritos[activeGabaritoIndex];
-            const newCount = Math.min(20, Math.max(2, current.count + delta));
-            if (newCount === current.count) return;
-
+            const newCount = Math.min(100, Math.max(1, Number.parseInt(value, 10) || 1));
             current.count = newCount;
+
             while (current.answers.length < newCount) {
-                current.answers.push(OPTIONS[current.answers.length % 4]);
+                current.answers.push(current.options[0]);
             }
             current.answers = current.answers.slice(0, newCount);
 
+            while (studentAnswers.length < newCount) studentAnswers.push(null);
+            studentAnswers = studentAnswers.slice(0, newCount);
             syncStudentAnswersLength();
+            persistAppData();
             renderGabaritoScreen();
             renderCartaoScreen();
+            renderScannerScreen();
+        }
+
+        function changeOptionCount(value) {
+            const current = gabaritos[activeGabaritoIndex];
+            current.options = buildOptions(value);
+            current.answers = current.answers.map((answer) =>
+                current.options.includes(answer) ? answer : current.options[0]
+            );
+            studentAnswers = studentAnswers.map((answer) =>
+                current.options.includes(answer) ? answer : null
+            );
+            persistAppData();
+            renderGabaritoScreen();
+            renderCartaoScreen();
+            renderScannerScreen();
         }
 
         function syncStudentAnswersLength() {
-            const target = gabaritos[activeGabaritoIndex].count;
-            while (studentAnswers.length < target) {
-                studentAnswers.push('A');
-            }
-            studentAnswers = studentAnswers.slice(0, target);
+            const current = gabaritos[activeGabaritoIndex];
+            while (studentAnswers.length < current.count) studentAnswers.push(null);
+            studentAnswers = studentAnswers.slice(0, current.count).map((answer) =>
+                current.options.includes(answer) ? answer : null
+            );
         }
 
         function randomizeGabaritoAnswers() {
             const current = gabaritos[activeGabaritoIndex];
-            current.answers = current.answers.map(() => OPTIONS[Math.floor(Math.random() * OPTIONS.length)]);
+            current.answers = current.answers.map(() =>
+                current.options[Math.floor(Math.random() * current.options.length)]
+            );
+            persistAppData();
             renderGabaritoScreen();
             showToast('Respostas sorteadas!');
         }
 
         function saveCurrentGabarito() {
-            const nameInput = document.getElementById('gabarito-name-input').value.trim();
-            if (nameInput) {
-                gabaritos[activeGabaritoIndex].name = nameInput;
+            const current = gabaritos[activeGabaritoIndex];
+            const subject = document.getElementById('gabarito-subject-input').value.trim();
+            const name = document.getElementById('gabarito-name-input').value.trim();
+
+            if (!subject) {
+                showToast('Informe a disciplina.');
+                document.getElementById('gabarito-subject-input').focus();
+                return;
             }
+            if (!name) {
+                showToast('Informe o nome da avaliação.');
+                document.getElementById('gabarito-name-input').focus();
+                return;
+            }
+
+            current.subject = subject;
+            current.name = name;
+            persistAppData();
             renderGabaritoScreen();
-            showToast('Gabarito salvo com sucesso!');
+            showToast('Gabarito salvo neste dispositivo!');
         }
 
         // ==========================================
@@ -910,11 +1033,17 @@
         function renderCartaoScreen() {
             const current = gabaritos[activeGabaritoIndex];
             const select = document.getElementById('cartao-gabarito-select');
-            select.innerHTML = gabaritos.map((g, idx) =>
-                `<option value="${idx}" ${idx === activeGabaritoIndex ? 'selected' : ''}>${g.name}</option>`
-            ).join('');
+            select.innerHTML = '';
+            gabaritos.forEach((g, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = g.subject + ' • ' + g.name;
+                option.selected = index === activeGabaritoIndex;
+                select.appendChild(option);
+            });
 
             document.getElementById('cartao-count-display').textContent = current.count;
+            document.getElementById('cartao-subject-label').textContent = current.subject;
 
             const half = Math.ceil(current.count / 2);
             const grid = document.getElementById('cartao-bubbles-grid');
@@ -923,7 +1052,6 @@
             for (let row = 0; row < half; row++) {
                 const leftIdx = row;
                 const rightIdx = row + half;
-
                 grid.appendChild(createBubbleRow(leftIdx, false));
                 if (rightIdx < current.count) {
                     grid.appendChild(createBubbleRow(rightIdx, false));
@@ -934,9 +1062,12 @@
         }
 
         function syncCartaoWithGabarito(index) {
-            activeGabaritoIndex = parseInt(index, 10);
-            syncStudentAnswersLength();
+            const selectedIndex = Number.parseInt(index, 10);
+            if (!Number.isInteger(selectedIndex) || !gabaritos[selectedIndex]) return;
+            activeGabaritoIndex = selectedIndex;
+            studentAnswers = Array(gabaritos[activeGabaritoIndex].count).fill(null);
             renderCartaoScreen();
+            renderScannerScreen();
         }
 
         // Cria uma linha de questão com bolinhas A B C D
@@ -950,17 +1081,19 @@
             row.appendChild(num);
 
             const bubblesWrap = document.createElement('div');
-            bubblesWrap.className = 'flex items-center gap-1.5';
+            bubblesWrap.className = 'flex items-center gap-1';
+            const options = gabaritos[activeGabaritoIndex].options;
+            const compactBubble = options.length > 6;
 
-            OPTIONS.forEach(opt => {
+            options.forEach(opt => {
                 const isSelected = isScannerMode && studentAnswers[questionIndex] === opt;
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = `w-6 h-6 rounded-full border text-[10px] font-bold flex items-center justify-center transition ${
-                    isSelected
+                btn.className = (compactBubble ? 'w-5 h-5 text-[9px]' : 'w-6 h-6 text-[10px]') +
+                    ' rounded-full border font-bold flex items-center justify-center transition ' +
+                    (isSelected
                         ? 'bg-slate-800 text-white border-slate-900 shadow-inner scale-105'
-                        : 'bg-white text-slate-700 border-slate-400 hover:border-blue-600'
-                }`;
+                        : 'bg-white text-slate-700 border-slate-400 hover:border-blue-600');
                 btn.textContent = opt;
 
                 btn.onclick = () => {
@@ -1011,9 +1144,9 @@
 
             const current = gabaritos[activeGabaritoIndex];
             studentAnswers = current.answers.map(correctAns => {
-                // 75% de chance de acertar cada questão para simular um aluno real
+                // 75% de chance de acertar cada questão para simular um aluno real.
                 if (Math.random() < 0.75) return correctAns;
-                return OPTIONS[Math.floor(Math.random() * OPTIONS.length)];
+                return current.options[Math.floor(Math.random() * current.options.length)];
             });
 
             renderScannerScreen();
@@ -1062,12 +1195,15 @@
             gradingHistory.unshift({
                 studentName,
                 studentClass,
+                subject: current.subject,
                 gabaritoName: current.name,
+                questionCount: current.count,
                 hits,
                 misses,
                 score,
-                date: 'Agora mesmo'
+                date: new Date().toLocaleString('pt-BR')
             });
+            persistAppData();
 
             navigate('resultado');
             showToast('Prova corrigida com precisão!');
@@ -1091,7 +1227,7 @@
             const studentClass = document.getElementById('student-class-input').value.trim() || '9º A';
 
             document.getElementById('res-student-name').textContent = `${studentName} (${studentClass})`;
-            document.getElementById('res-gabarito-title').textContent = current.name.split('-')[0].trim();
+            document.getElementById('res-gabarito-title').textContent = current.subject;
             document.getElementById('res-hits').textContent = hits;
             document.getElementById('res-misses').textContent = misses;
             document.getElementById('res-score-percent').textContent = `${percent}%`;
@@ -1127,7 +1263,7 @@
                     </span>
                     <span class="font-bold text-slate-800">${correctAns}</span>
                 </div>
-                ${!isCorrect ? `<span class="text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Marcou ${studentAns}</span>` : ''}
+                ${!isCorrect ? `<span class="text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">${studentAns ? 'Marcou ' + studentAns : 'Em branco'}</span>` : ''}
             `;
             return item;
         }
@@ -1159,8 +1295,8 @@
             list.innerHTML = gradingHistory.map(item => `
                 <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <div class="font-extrabold text-slate-800 text-xs">${item.studentName} <span class="text-slate-400 font-semibold">(${item.studentClass})</span></div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">${item.gabaritoName} • ${item.date}</div>
+                        <div class="font-extrabold text-slate-800 text-xs">${escapeHTML(item.studentName)} <span class="text-slate-400 font-semibold">(${escapeHTML(item.studentClass)})</span></div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">${escapeHTML(item.subject || '')} • ${escapeHTML(item.gabaritoName)} • ${escapeHTML(item.date)}</div>
                         <div class="flex items-center gap-3 mt-1.5 text-[11px] font-bold">
                             <span class="text-emerald-600"><i class="fa-solid fa-check mr-1"></i>${item.hits} acertos</span>
                             <span class="text-red-500"><i class="fa-solid fa-xmark mr-1"></i>${item.misses} erros</span>
@@ -1179,6 +1315,7 @@
 
         function clearHistory() {
             gradingHistory = [];
+            persistAppData();
             renderHistoricoScreen();
             showToast('Histórico limpo!');
         }
