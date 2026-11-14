@@ -1228,12 +1228,21 @@
             return canvas;
         }
 
+        function prepareNewOMRScan() {
+            const current=gabaritos[activeGabaritoIndex];
+            studentAnswers=Array(current.count).fill(null);
+            scanStatuses=[];
+            document.getElementById('omr-output-canvas').classList.add('hidden');
+            renderScannerScreen();
+        }
+
         function captureAndAnalyze() {
             const video=document.getElementById('camera-video');
             if(!cameraStream || !video.videoWidth){
                 setOMRStatus('Ative a câmera ou envie uma foto antes de capturar.',true);
                 return;
             }
+            prepareNewOMRScan();
             analyzeOMRCanvas(drawSourceToCanvas(video,video.videoWidth,video.videoHeight));
         }
 
@@ -1244,6 +1253,7 @@
                 setOMRStatus('Selecione uma imagem JPG, PNG ou outro formato de foto compatível.',true);
                 return;
             }
+            prepareNewOMRScan();
             const reader=new FileReader();
             reader.onerror=()=>setOMRStatus('Não foi possível abrir a imagem selecionada.',true);
             reader.onload=()=>{
