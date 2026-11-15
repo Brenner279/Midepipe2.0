@@ -439,20 +439,6 @@
                             <i class="fa-solid fa-play mr-1"></i> Processar PDFs selecionados
                         </button>
                         <div id="batch-pdf-status" class="hidden rounded-lg bg-slate-50 border border-slate-200 p-2 text-[11px] text-slate-700"></div>
-                        <div id="batch-pdf-filter-panel" class="hidden space-y-2">
-                            <div class="flex items-center justify-between gap-2">
-                                <span class="text-[11px] font-extrabold text-slate-800">Resultados do processamento</span>
-                                <span id="batch-pdf-result-count" class="text-[10px] text-slate-500"></span>
-                            </div>
-                            <input id="batch-pdf-search" type="search" oninput="setBatchPDFSearch(this.value)" placeholder="Buscar aluno, arquivo, disciplina ou avaliação..." class="w-full border border-slate-300 rounded-lg bg-white px-3 py-2 text-[11px] text-slate-800">
-                            <div class="flex flex-wrap gap-1.5">
-                                <button id="batch-filter-all" type="button" onclick="setBatchPDFFilter('all')" class="rounded-full px-3 py-1.5 text-[10px] font-bold border border-indigo-700 bg-indigo-700 text-white">Todos <span id="batch-count-all">0</span></button>
-                                <button id="batch-filter-ready" type="button" onclick="setBatchPDFFilter('ready')" class="rounded-full px-3 py-1.5 text-[10px] font-bold border border-slate-300 bg-white text-slate-700">Prontos <span id="batch-count-ready">0</span></button>
-                                <button id="batch-filter-review" type="button" onclick="setBatchPDFFilter('review')" class="rounded-full px-3 py-1.5 text-[10px] font-bold border border-slate-300 bg-white text-slate-700">Revisar <span id="batch-count-review">0</span></button>
-                                <button id="batch-filter-error" type="button" onclick="setBatchPDFFilter('error')" class="rounded-full px-3 py-1.5 text-[10px] font-bold border border-slate-300 bg-white text-slate-700">Falhas <span id="batch-count-error">0</span></button>
-                                <button id="batch-filter-saved" type="button" onclick="setBatchPDFFilter('saved')" class="rounded-full px-3 py-1.5 text-[10px] font-bold border border-slate-300 bg-white text-slate-700">Salvos <span id="batch-count-saved">0</span></button>
-                            </div>
-                        </div>
                         <div id="batch-pdf-results" class="space-y-2"></div>
                         <button id="batch-pdf-save" type="button" onclick="saveBatchPDFResults()" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl">
                             <i class="fa-solid fa-floppy-disk mr-1"></i> Salvar resultados do lote
@@ -817,8 +803,6 @@
         let batchPdfFiles = [];
         let batchPdfResults = [];
         let batchPdfProcessing = false;
-        let batchPdfFilter = 'all';
-        let batchPdfSearch = '';
         persistAppData();
 
         // Navegação entre as telas
@@ -1437,13 +1421,9 @@
                 gabaritoIndex:activeGabaritoIndex
             }));
             batchPdfResults=[];
-            batchPdfFilter='all';
-            batchPdfSearch='';
-            const searchInput=document.getElementById('batch-pdf-search');
-            if(searchInput)searchInput.value='';
             input.value='';
             renderBatchPDFFileList();
-            renderBatchPDFResults();
+            document.getElementById('batch-pdf-results').innerHTML='';
             document.getElementById('batch-pdf-save').classList.add('hidden');
             document.getElementById('batch-pdf-process').disabled=batchPdfFiles.length===0;
             if(batchPdfFiles.length){
@@ -1494,78 +1474,13 @@
             });
         }
 
-        function getBatchPDFResultStatus(item) {
-            if(item.error)return 'error';
-            if(item.saved)return 'saved';
-            const needsReview=item.statuses.some((status,index)=>
-                status && status.status==='uncertain' && !item.resolvedUncertain[index]
-            );
-            return needsReview?'review':'ready';
-        }
-
-        function setBatchPDFFilter(filter) {
-            batchPdfFilter=['all','ready','review','error','saved'].includes(filter)?filter:'all';
-            renderBatchPDFResults();
-        }
-
-        function setBatchPDFSearch(value) {
-            batchPdfSearch=String(value||'');
-            renderBatchPDFResults();
-        }
-
-        function normalizeBatchPDFSearch(value) {
-            return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-        }
-
         function renderBatchPDFResults() {
             const box=document.getElementById('batch-pdf-results');
             const saveButton=document.getElementById('batch-pdf-save');
-            const filterPanel=document.getElementById('batch-pdf-filter-panel');
             if(!box)return;
             box.innerHTML='';
-
-            const counts={all:batchPdfResults.length,ready:0,review:0,error:0,saved:0};
-            batchPdfResults.forEach(item=>{
-                const status=getBatchPDFResultStatus(item);
-                counts[status]++;
-            });
-
-            const filterDefinitions=[
-                ['all','batch-filter-all','batch-count-all'],
-                ['ready','batch-filter-ready','batch-count-ready'],
-                ['review','batch-filter-review','batch-count-review'],
-                ['error','batch-filter-error','batch-count-error'],
-                ['saved','batch-filter-saved','batch-count-saved']
-            ];
-            filterPanel.classList.toggle('hidden',batchPdfResults.length===0);
-            filterDefinitions.forEach(([filter,buttonId,countId])=>{
-                const button=document.getElementById(buttonId);
-                const count=document.getElementById(countId);
-                if(count)count.textContent=String(counts[filter]);
-                if(button){
-                    const active=batchPdfFilter===filter;
-                    button.className='rounded-full px-3 py-1.5 text-[10px] font-bold border '+(active
-                        ?'border-indigo-700 bg-indigo-700 text-white'
-                        :'border-slate-300 bg-white text-slate-700 hover:bg-slate-50');
-                }
-            });
-
-            const search=normalizeBatchPDFSearch(batchPdfSearch).trim();
-            const filteredEntries=batchPdfResults.map((item,index)=>({item,index})).filter(({item})=>{
-                const status=getBatchPDFResultStatus(item);
-                if(batchPdfFilter!=='all' && status!==batchPdfFilter)return false;
-                if(!search)return true;
-                const haystack=normalizeBatchPDFSearch([
-                    item.fileName,item.studentName,item.studentClass,item.subject,item.gabaritoName
-                ].join(' '));
-                return haystack.includes(search);
-            });
-
-            const resultCount=document.getElementById('batch-pdf-result-count');
-            if(resultCount)resultCount.textContent='Mostrando '+filteredEntries.length+' de '+batchPdfResults.length;
-
-            const readyCount=counts.ready;
-            filteredEntries.forEach(({item,index})=>{
+            let readyCount=0;
+            batchPdfResults.forEach((item,index)=>{
                 const card=document.createElement('div');
                 card.className='rounded-xl border '+(item.error?'border-red-200 bg-red-50':'border-slate-200 bg-white')+' p-2.5 space-y-2';
                 const heading=document.createElement('div');
@@ -1671,16 +1586,6 @@
                 }
                 box.appendChild(card);
             });
-
-            if(filteredEntries.length===0 && batchPdfResults.length){
-                const empty=document.createElement('div');
-                empty.className='rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-[11px] text-slate-500';
-                empty.textContent=batchPdfSearch.trim()
-                    ?'Nenhum resultado corresponde à busca e aos filtros selecionados.'
-                    :'Não há resultados nesta categoria.';
-                box.appendChild(empty);
-            }
-
             saveButton.classList.toggle('hidden',readyCount===0);
             if(batchPdfResults.length && readyCount===0){
                 setBatchPDFStatus('Processamento finalizado. Não há resultados prontos para salvar; verifique os arquivos com erro ou as páginas que ainda precisam de revisão.',true);
