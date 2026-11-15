@@ -397,10 +397,10 @@
                         <button onclick="toggleRealCamera()" class="bg-[#004aad] text-white font-bold text-xs py-3 rounded-xl shadow flex items-center justify-center gap-2">
                             <i class="fa-solid fa-camera"></i> Abrir câmera
                         </button>
-                        <label for="omr-image-input" class="bg-white border border-blue-200 text-blue-900 font-bold text-xs py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer">
-                            <i class="fa-solid fa-image"></i> Enviar foto
-                        </label>
-                        <input id="omr-image-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleOMRFile(this.files && this.files[0]); this.value=''">
+                        <button type="button" onclick="document.getElementById('omr-image-input').click()" class="bg-white border border-blue-200 text-blue-900 font-bold text-xs py-3 rounded-xl shadow-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-images"></i> Escolher da galeria
+                        </button>
+                        <input id="omr-image-input" type="file" accept="image/*,.jpg,.jpeg,.png,.webp" class="hidden" onchange="handleOMRFile(this.files && this.files[0]); this.value=''">
                     </div>
                     <video id="camera-video" autoplay playsinline muted class="hidden w-full max-h-56 object-contain bg-black rounded-xl border border-slate-300"></video>
                     <canvas id="omr-processing-canvas" class="hidden"></canvas>
