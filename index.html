@@ -116,6 +116,7 @@
             window.dispatchEvent(new Event('opencv-ready'));
         };
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script async src="https://docs.opencv.org/4.x/opencv.js" onerror="window.opencvLoadFailed = true; window.dispatchEvent(new Event('opencv-ready'))"></script>
 </head>
 <body class="flex flex-col items-center justify-center p-0 sm:p-4 md:p-6">
@@ -424,6 +425,24 @@
                             <i class="fa-solid fa-images"></i> Escolher da galeria
                         </button>
                         <input id="omr-image-input" type="file" accept="image/*,.jpg,.jpeg,.png,.webp" class="hidden" onchange="handleOMRFile(this.files && this.files[0]); this.value=''">
+                    </div>
+                    <div class="bg-white border border-indigo-200 rounded-xl p-3 space-y-2">
+                        <div class="flex items-center gap-2 text-xs font-extrabold text-indigo-950">
+                            <i class="fa-solid fa-layer-group"></i> Correção em lote por PDF
+                        </div>
+                        <p class="text-[10px] leading-relaxed text-slate-600">
+                            Selecione vários PDFs. Cada página deve conter um cartão-resposta completo. Escolha o gabarito correspondente a cada arquivo; assim é possível corrigir avaliações diferentes na mesma operação.
+                        </p>
+                        <input id="batch-pdf-input" type="file" accept="application/pdf,.pdf" multiple onchange="handleBatchPDFSelection(this)" class="block w-full text-[11px] text-slate-600 file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-[11px] file:font-bold file:text-indigo-800">
+                        <div id="batch-pdf-files" class="space-y-2"></div>
+                        <button id="batch-pdf-process" type="button" onclick="processBatchPDFs()" class="w-full bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl">
+                            <i class="fa-solid fa-play mr-1"></i> Processar PDFs selecionados
+                        </button>
+                        <div id="batch-pdf-status" class="hidden rounded-lg bg-slate-50 border border-slate-200 p-2 text-[11px] text-slate-700"></div>
+                        <div id="batch-pdf-results" class="space-y-2"></div>
+                        <button id="batch-pdf-save" type="button" onclick="saveBatchPDFResults()" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i> Salvar resultados do lote
+                        </button>
                     </div>
                     <video id="camera-video" autoplay playsinline muted class="hidden w-full max-h-56 object-contain bg-black rounded-xl border border-slate-300"></video>
                     <canvas id="omr-processing-canvas" class="hidden"></canvas>
@@ -781,6 +800,9 @@
 
         let cameraStream = null;
         let scanStatuses = [];
+        let batchPdfFiles = [];
+        let batchPdfResults = [];
+        let batchPdfProcessing = false;
         persistAppData();
 
         // Navegação entre as telas
@@ -1254,6 +1276,7 @@
                 grid.appendChild(row);
             }
             updateOMRSummary();
+            renderBatchPDFFileList();
         }
 
         function simulateRandomStudentSheet() {
@@ -1380,6 +1403,327 @@
                 image.src=reader.result;
             };
             reader.readAsDataURL(file);
+        }
+
+        function setBatchPDFStatus(message,isError=false) {
+            const box=document.getElementById('batch-pdf-status');
+            if(!box)return;
+            box.textContent=message;
+            box.className=isError
+                ?'rounded-lg bg-red-50 border border-red-200 p-2 text-[11px] text-red-800'
+                :'rounded-lg bg-slate-50 border border-slate-200 p-2 text-[11px] text-slate-700';
+            box.classList.remove('hidden');
+        }
+
+        function handleBatchPDFSelection(input) {
+            batchPdfFiles=Array.from(input.files||[]).map(file=>({
+                file:file,
+                gabaritoIndex:activeGabaritoIndex
+            }));
+            batchPdfResults=[];
+            renderBatchPDFFileList();
+            document.getElementById('batch-pdf-results').innerHTML='';
+            document.getElementById('batch-pdf-save').classList.add('hidden');
+            document.getElementById('batch-pdf-process').disabled=batchPdfFiles.length===0;
+            if(batchPdfFiles.length){
+                setBatchPDFStatus(batchPdfFiles.length+' arquivo(s) PDF selecionado(s). Associe o gabarito de cada avaliação e inicie o processamento.',false);
+            }else{
+                document.getElementById('batch-pdf-status').classList.add('hidden');
+            }
+        }
+
+        function renderBatchPDFFileList() {
+            const box=document.getElementById('batch-pdf-files');
+            if(!box)return;
+            box.innerHTML='';
+            batchPdfFiles.forEach((entry,index)=>{
+                const row=document.createElement('div');
+                row.className='rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-1.5';
+                const title=document.createElement('div');
+                title.className='text-[11px] font-bold text-slate-800 break-all';
+                title.textContent=(index+1)+'. '+entry.file.name;
+                const controls=document.createElement('div');
+                controls.className='flex items-center gap-2';
+                const select=document.createElement('select');
+                select.className='min-w-0 flex-1 border border-slate-300 rounded-lg bg-white px-2 py-2 text-[11px] text-slate-800';
+                gabaritos.forEach((g,gIndex)=>{
+                    const option=document.createElement('option');
+                    option.value=String(gIndex);
+                    option.textContent=g.subject+' • '+g.name;
+                    select.appendChild(option);
+                });
+                select.value=String(entry.gabaritoIndex);
+                select.addEventListener('change',()=>{entry.gabaritoIndex=Number(select.value);});
+                const remove=document.createElement('button');
+                remove.type='button';
+                remove.className='shrink-0 rounded-lg bg-red-50 px-3 py-2 text-[10px] font-bold text-red-700';
+                remove.textContent='Remover';
+                remove.addEventListener('click',()=>{
+                    batchPdfFiles.splice(index,1);
+                    renderBatchPDFFileList();
+                    document.getElementById('batch-pdf-process').disabled=batchPdfFiles.length===0 || batchPdfProcessing;
+                });
+                controls.appendChild(select);
+                controls.appendChild(remove);
+                row.appendChild(title);
+                row.appendChild(controls);
+                box.appendChild(row);
+            });
+        }
+
+        function renderBatchPDFResults() {
+            const box=document.getElementById('batch-pdf-results');
+            const saveButton=document.getElementById('batch-pdf-save');
+            if(!box)return;
+            box.innerHTML='';
+            let readyCount=0;
+            batchPdfResults.forEach((item,index)=>{
+                const card=document.createElement('div');
+                card.className='rounded-xl border '+(item.error?'border-red-200 bg-red-50':'border-slate-200 bg-white')+' p-2.5 space-y-2';
+                const heading=document.createElement('div');
+                heading.className='text-[11px] font-extrabold text-slate-800 break-all';
+                heading.textContent=item.fileName+(item.pageNumber?' • Página '+item.pageNumber:'');
+                card.appendChild(heading);
+
+                if(item.error){
+                    const error=document.createElement('p');
+                    error.className='text-[10px] text-red-700';
+                    error.textContent=item.error;
+                    card.appendChild(error);
+                }else if(item.saved){
+                    const saved=document.createElement('p');
+                    saved.className='text-[10px] font-bold text-emerald-700';
+                    saved.textContent='Resultado salvo no histórico.';
+                    card.appendChild(saved);
+                }else{
+                    const g=document.createElement('p');
+                    g.className='text-[10px] text-slate-500';
+                    g.textContent=item.subject+' • '+item.gabaritoName+' • '+item.answers.length+' questões';
+                    card.appendChild(g);
+
+                    const identity=document.createElement('div');
+                    identity.className='grid grid-cols-2 gap-2';
+                    const name=document.createElement('input');
+                    name.type='text';
+                    name.value=item.studentName;
+                    name.placeholder='Nome do aluno';
+                    name.className='min-w-0 border border-slate-300 rounded-lg px-2 py-2 text-[10px]';
+                    name.setAttribute('aria-label','Nome do aluno para '+heading.textContent);
+                    name.addEventListener('input',()=>{item.studentName=name.value;});
+                    const studentClass=document.createElement('input');
+                    studentClass.type='text';
+                    studentClass.value=item.studentClass;
+                    studentClass.placeholder='Turma';
+                    studentClass.className='min-w-0 border border-slate-300 rounded-lg px-2 py-2 text-[10px]';
+                    studentClass.setAttribute('aria-label','Turma para '+heading.textContent);
+                    studentClass.addEventListener('input',()=>{item.studentClass=studentClass.value;});
+                    identity.appendChild(name);
+                    identity.appendChild(studentClass);
+                    card.appendChild(identity);
+
+                    const counts={multiple:0,blank:0,uncertain:0};
+                    item.statuses.forEach(status=>{
+                        if(status && counts[status.status]!==undefined)counts[status.status]++;
+                    });
+                    const summary=document.createElement('p');
+                    summary.className='text-[10px] text-slate-600';
+                    summary.textContent=counts.multiple+' marcações duplas (erradas) • '+counts.blank+' em branco • '+counts.uncertain+' para revisar';
+                    card.appendChild(summary);
+
+                    const unresolved=[];
+                    item.statuses.forEach((status,questionIndex)=>{
+                        if(status && status.status==='uncertain' && !item.resolvedUncertain[questionIndex]){
+                            unresolved.push(questionIndex);
+                        }
+                    });
+                    if(unresolved.length){
+                        const review=document.createElement('div');
+                        review.className='rounded-lg bg-amber-50 border border-amber-200 p-2 space-y-1.5';
+                        const note=document.createElement('p');
+                        note.className='text-[10px] font-bold text-amber-800';
+                        note.textContent='Revise as leituras duvidosas antes de salvar:';
+                        review.appendChild(note);
+                        unresolved.forEach(questionIndex=>{
+                            const line=document.createElement('div');
+                            line.className='flex items-center justify-between gap-2';
+                            const label=document.createElement('label');
+                            label.className='text-[10px] text-amber-900';
+                            label.textContent='Questão '+(questionIndex+1);
+                            const select=document.createElement('select');
+                            select.className='max-w-[58%] border border-amber-300 rounded-md bg-white px-2 py-1.5 text-[10px]';
+                            const placeholder=document.createElement('option');
+                            placeholder.value='';
+                            placeholder.textContent='Escolha a resposta';
+                            select.appendChild(placeholder);
+                            item.options.forEach(letter=>{
+                                const option=document.createElement('option');
+                                option.value=letter;
+                                option.textContent=letter;
+                                select.appendChild(option);
+                            });
+                            const blank=document.createElement('option');
+                            blank.value='__blank__';
+                            blank.textContent='Em branco (erro)';
+                            select.appendChild(blank);
+                            select.addEventListener('change',()=>{
+                                if(!select.value)return;
+                                item.answers[questionIndex]=select.value==='__blank__'?null:select.value;
+                                item.resolvedUncertain[questionIndex]=true;
+                                renderBatchPDFResults();
+                            });
+                            line.appendChild(label);
+                            line.appendChild(select);
+                            review.appendChild(line);
+                        });
+                        card.appendChild(review);
+                    }
+
+                    if(unresolved.length===0)readyCount++;
+                }
+                box.appendChild(card);
+            });
+            saveButton.classList.toggle('hidden',readyCount===0);
+            if(batchPdfResults.length && readyCount===0){
+                setBatchPDFStatus('Processamento finalizado. Não há resultados prontos para salvar; verifique os arquivos com erro ou as páginas que ainda precisam de revisão.',true);
+            }
+        }
+
+        async function processBatchPDFs() {
+            if(batchPdfProcessing)return;
+            if(!batchPdfFiles.length){
+                setBatchPDFStatus('Selecione pelo menos um arquivo PDF.',true);
+                return;
+            }
+            if(!window.pdfjsLib){
+                setBatchPDFStatus('O leitor de PDF não carregou. Verifique a conexão com a internet e atualize a página.',true);
+                return;
+            }
+            if(!window.opencvReady || !window.cv){
+                setBatchPDFStatus('O leitor OMR ainda está carregando. Aguarde alguns segundos e tente novamente.',true);
+                return;
+            }
+
+            batchPdfProcessing=true;
+            batchPdfResults=[];
+            const button=document.getElementById('batch-pdf-process');
+            button.disabled=true;
+            button.textContent='Processando PDFs...';
+            document.getElementById('batch-pdf-save').classList.add('hidden');
+            document.getElementById('batch-pdf-results').innerHTML='';
+            let processedPages=0;
+            let savedReady=0;
+
+            try{
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                for(let fileIndex=0;fileIndex<batchPdfFiles.length;fileIndex++){
+                    const entry=batchPdfFiles[fileIndex];
+                    const current=gabaritos[entry.gabaritoIndex];
+                    const baseName=entry.file.name.replace(/\.pdf$/i,'');
+                    if(!current){
+                        batchPdfResults.push({fileName:entry.file.name,error:'O gabarito selecionado não está disponível.'});
+                        continue;
+                    }
+                    let pdf=null;
+                    try{
+                        const bytes=new Uint8Array(await entry.file.arrayBuffer());
+                        pdf=await window.pdfjsLib.getDocument({data:bytes}).promise;
+                        for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber++){
+                            setBatchPDFStatus('Processando arquivo '+(fileIndex+1)+' de '+batchPdfFiles.length+' • página '+pageNumber+' de '+pdf.numPages+'...',false);
+                            const page=await pdf.getPage(pageNumber);
+                            let canvas=null;
+                            try{
+                                const baseViewport=page.getViewport({scale:1});
+                                const scale=Math.min(2.5,2200/Math.max(baseViewport.width,baseViewport.height));
+                                const viewport=page.getViewport({scale:scale});
+                                canvas=document.createElement('canvas');
+                                canvas.width=Math.max(1,Math.round(viewport.width));
+                                canvas.height=Math.max(1,Math.round(viewport.height));
+                                const context=canvas.getContext('2d',{willReadFrequently:true});
+                                await page.render({canvasContext:context,viewport:viewport}).promise;
+                                const result=await analyzeOMRCanvas(canvas,{current:current,returnData:true});
+                                const resolvedUncertain=Array(result.statuses.length).fill(false);
+                                batchPdfResults.push({
+                                    fileName:entry.file.name,
+                                    pageNumber:pageNumber,
+                                    subject:current.subject,
+                                    gabaritoName:current.name,
+                                    gabaritoId:current.id,
+                                    options:current.options.slice(),
+                                    correctAnswers:current.answers.slice(),
+                                    answers:result.answers.slice(),
+                                    statuses:result.statuses.slice(),
+                                    resolvedUncertain:resolvedUncertain,
+                                    studentName:baseName+' — página '+pageNumber,
+                                    studentClass:'',
+                                    saved:false
+                                });
+                                processedPages++;
+                            }catch(error){
+                                batchPdfResults.push({
+                                    fileName:entry.file.name,
+                                    pageNumber:pageNumber,
+                                    error:error.message||'Não foi possível ler esta página.'
+                                });
+                            }finally{
+                                if(canvas){canvas.width=0;canvas.height=0;}
+                                page.cleanup();
+                            }
+                        }
+                    }catch(error){
+                        batchPdfResults.push({fileName:entry.file.name,error:'Falha ao abrir o PDF: '+(error.message||'arquivo inválido ou protegido')});
+                    }finally{
+                        if(pdf){
+                            try{await pdf.destroy();}catch(error){console.warn('Falha ao liberar PDF:',error);}
+                        }
+                    }
+                }
+                renderBatchPDFResults();
+                const errors=batchPdfResults.filter(item=>item.error).length;
+                const needsReview=batchPdfResults.filter(item=>!item.error && item.statuses.some((status,index)=>status.status==='uncertain' && !item.resolvedUncertain[index])).length;
+                const ready=batchPdfResults.filter(item=>!item.error && !item.saved && item.statuses.every((status,index)=>status.status!=='uncertain' || item.resolvedUncertain[index])).length;
+                savedReady=ready;
+                setBatchPDFStatus('Leitura concluída: '+processedPages+' página(s) com cartão analisado, '+errors+' página(s)/arquivo(s) com falha e '+needsReview+' cartão(ões) aguardando revisão. '+savedReady+' resultado(s) pronto(s) para salvar.',false);
+            }finally{
+                batchPdfProcessing=false;
+                button.disabled=batchPdfFiles.length===0;
+                button.innerHTML='<i class="fa-solid fa-rotate-right mr-1"></i> Processar PDFs novamente';
+            }
+        }
+
+        function saveBatchPDFResults() {
+            const pending=batchPdfResults.filter(item=>!item.error && !item.saved);
+            const eligible=pending.filter(item=>
+                item.statuses.every((status,index)=>status.status!=='uncertain' || item.resolvedUncertain[index])
+            );
+            if(!eligible.length){
+                setBatchPDFStatus('Nenhum resultado está pronto. Revise as questões duvidosas ou verifique os PDFs.',true);
+                return;
+            }
+            eligible.forEach(item=>{
+                let hits=0;
+                for(let index=0;index<item.correctAnswers.length;index++){
+                    if(item.answers[index]===item.correctAnswers[index])hits++;
+                }
+                const misses=item.correctAnswers.length-hits;
+                gradingHistory.unshift({
+                    studentName:item.studentName.trim()||item.fileName+' — página '+item.pageNumber,
+                    studentClass:item.studentClass.trim()||'S/T',
+                    subject:item.subject,
+                    gabaritoName:item.gabaritoName,
+                    questionCount:item.correctAnswers.length,
+                    hits:hits,
+                    misses:misses,
+                    score:Math.round((hits/item.correctAnswers.length)*100),
+                    date:new Date().toLocaleString('pt-BR')
+                });
+                item.saved=true;
+            });
+            persistAppData();
+            renderHistoricoScreen();
+            renderBatchPDFResults();
+            const remaining=batchPdfResults.filter(item=>!item.error && !item.saved).length;
+            setBatchPDFStatus(eligible.length+' resultado(s) salvo(s) no histórico. '+remaining+' cartão(ões) ainda não foram salvos.',false);
+            showToast(eligible.length+' correção(ões) adicionada(s) ao histórico.');
         }
 
         function findOMRCornerMarkers(gray,cv) {
@@ -1553,8 +1897,9 @@
                     :'<p class="text-emerald-700 font-semibold mt-1">Confira as respostas e prossiga para a correção.</p>');
         }
 
-        async function analyzeOMRCanvas(sourceCanvas) {
+        async function analyzeOMRCanvas(sourceCanvas,options={}) {
             if(!window.opencvReady || !window.cv){
+                if(options.returnData)throw new Error('O motor OMR ainda não está pronto.');
                 updateOpenCVStatus();
                 setOMRStatus('O motor OMR ainda não está pronto. Aguarde o carregamento ou utilize a revisão manual.',true);
                 return;
@@ -1563,7 +1908,7 @@
             try{
                 const cv=window.cv instanceof Promise ? await window.cv : window.cv;
                 if(!cv || !cv.Mat)throw new Error('O OpenCV.js ainda está inicializando. Aguarde alguns segundos e tente novamente.');
-                setOMRStatus('Analisando a imagem e procurando os quatro marcadores...',false);
+                if(!options.returnData)setOMRStatus('Analisando a imagem e procurando os quatro marcadores...',false);
                 source=cv.imread(sourceCanvas);
                 gray=new cv.Mat();
                 cv.cvtColor(source,gray,source.channels()===4?cv.COLOR_RGBA2GRAY:cv.COLOR_BGR2GRAY);
@@ -1583,7 +1928,9 @@
                 cv.cvtColor(warped,warpedGray,warped.channels()===4?cv.COLOR_RGBA2GRAY:cv.COLOR_BGR2GRAY);
                 smooth=new cv.Mat();
                 cv.GaussianBlur(warpedGray,smooth,new cv.Size(3,3),0,0,cv.BORDER_DEFAULT);
-                const result=readOMRAnswers(smooth,gabaritos[activeGabaritoIndex]);
+                const current=options.current || gabaritos[activeGabaritoIndex];
+                const result=readOMRAnswers(smooth,current);
+                if(options.returnData)return {answers:result.answers,statuses:result.statuses};
                 studentAnswers=result.answers;
                 scanStatuses=result.statuses;
                 const output=document.getElementById('omr-output-canvas');
@@ -1599,6 +1946,7 @@
                     doubleMarks+' com marcação dupla (consideradas erradas); '+
                     uncertainMarks+' duvidosas para revisão. Informe nome e turma manualmente.',false);
             }catch(error){
+                if(options.returnData)throw error;
                 setOMRStatus(error.message||'Falha ao interpretar o cartão. Tente outra foto com melhor iluminação.',true);
             }finally{
                 [source,gray,transform,warped,warpedGray,smooth].forEach(matrix=>{
