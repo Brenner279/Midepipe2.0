@@ -591,9 +591,51 @@
                         </div>
                     </div>
 
+                    <!-- Filtros do histórico de desempenho -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm space-y-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-xs font-extrabold text-slate-700">
+                                <i class="fa-solid fa-filter text-blue-600 mr-1"></i>Filtrar resultados
+                            </h3>
+                            <button onclick="clearHistoryFilters()" class="text-[10px] font-bold text-blue-700 hover:text-blue-900">
+                                Limpar filtros
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label for="hist-filter-subject" class="block text-[10px] font-bold text-slate-500 mb-1">Disciplina</label>
+                                <select id="hist-filter-subject" onchange="renderHistoricoScreen()" class="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                    <option value="">Todas as disciplinas</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="hist-filter-class" class="block text-[10px] font-bold text-slate-500 mb-1">Turma</label>
+                                <select id="hist-filter-class" onchange="renderHistoricoScreen()" class="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                    <option value="">Todas as turmas</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2">
+                                <label for="hist-filter-assessment" class="block text-[10px] font-bold text-slate-500 mb-1">Avaliação</label>
+                                <select id="hist-filter-assessment" onchange="renderHistoricoScreen()" class="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                    <option value="">Todas as avaliações</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="hist-filter-search" class="block text-[10px] font-bold text-slate-500 mb-1">Pesquisar aluno</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input id="hist-filter-search" type="search" oninput="renderHistoricoScreen()" placeholder="Digite o nome do aluno..." class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Lista de Provas Corrigidas -->
                     <div>
-                        <h3 class="text-xs font-extrabold text-slate-700 mb-2">Últimas Correções Realizadas:</h3>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <h3 class="text-xs font-extrabold text-slate-700">Correções realizadas:</h3>
+                            <span id="hist-filter-count" class="text-[10px] font-semibold text-slate-500"></span>
+                        </div>
                         <div id="history-list" class="space-y-2.5">
                             <!-- Preenchido via JS -->
                         </div>
@@ -2058,30 +2100,85 @@
         // ==========================================
         // FUNÇÕES: HISTÓRICO DE RESULTADOS
         // ==========================================
+        function historyFilterValue(item, field) {
+            const value = String(item && item[field] != null ? item[field] : '').trim();
+            return value || 'Não informada';
+        }
+
+        function populateHistoryFilter(id, field, allLabel, selectedValue) {
+            const select = document.getElementById(id);
+            if (!select) return;
+
+            const values = [...new Set(gradingHistory.map(item => historyFilterValue(item, field)))]
+                .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+            select.innerHTML = '';
+            const allOption = document.createElement('option');
+            allOption.value = '';
+            allOption.textContent = allLabel;
+            select.appendChild(allOption);
+
+            values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+
+            select.value = values.includes(selectedValue) ? selectedValue : '';
+        }
+
         function renderHistoricoScreen() {
             const list = document.getElementById('history-list');
-            document.getElementById('hist-total-exams').textContent = gradingHistory.length;
+            const subjectSelect = document.getElementById('hist-filter-subject');
+            const classSelect = document.getElementById('hist-filter-class');
+            const assessmentSelect = document.getElementById('hist-filter-assessment');
+            const searchInput = document.getElementById('hist-filter-search');
 
-            if (gradingHistory.length === 0) {
+            const selectedSubject = subjectSelect ? subjectSelect.value : '';
+            const selectedClass = classSelect ? classSelect.value : '';
+            const selectedAssessment = assessmentSelect ? assessmentSelect.value : '';
+            const searchTerm = searchInput ? searchInput.value.trim().toLocaleLowerCase('pt-BR') : '';
+
+            populateHistoryFilter('hist-filter-subject', 'subject', 'Todas as disciplinas', selectedSubject);
+            populateHistoryFilter('hist-filter-class', 'studentClass', 'Todas as turmas', selectedClass);
+            populateHistoryFilter('hist-filter-assessment', 'gabaritoName', 'Todas as avaliações', selectedAssessment);
+
+            const filteredHistory = gradingHistory.filter(item => {
+                const matchesSubject = !selectedSubject || historyFilterValue(item, 'subject') === selectedSubject;
+                const matchesClass = !selectedClass || historyFilterValue(item, 'studentClass') === selectedClass;
+                const matchesAssessment = !selectedAssessment || historyFilterValue(item, 'gabaritoName') === selectedAssessment;
+                const studentName = String(item.studentName || '').toLocaleLowerCase('pt-BR');
+                const matchesSearch = !searchTerm || studentName.includes(searchTerm);
+                return matchesSubject && matchesClass && matchesAssessment && matchesSearch;
+            });
+
+            document.getElementById('hist-total-exams').textContent = filteredHistory.length;
+            document.getElementById('hist-filter-count').textContent =
+                'Exibindo ' + filteredHistory.length + ' de ' + gradingHistory.length;
+
+            if (filteredHistory.length === 0) {
                 document.getElementById('hist-avg-score').textContent = '0%';
                 document.getElementById('hist-max-score').textContent = '0%';
                 list.innerHTML = `
                     <div class="bg-white rounded-xl p-6 text-center text-slate-400 text-xs border border-slate-200">
-                        Nenhuma correção registrada ainda.
+                        ${gradingHistory.length === 0
+                            ? 'Nenhuma correção registrada ainda.'
+                            : 'Nenhum resultado encontrado com os filtros selecionados.'}
                     </div>
                 `;
                 return;
             }
 
-            const avg = Math.round(gradingHistory.reduce((acc, item) => acc + item.score, 0) / gradingHistory.length);
-            const max = Math.max(...gradingHistory.map(item => item.score));
+            const avg = Math.round(filteredHistory.reduce((acc, item) => acc + (Number(item.score) || 0), 0) / filteredHistory.length);
+            const max = Math.max(...filteredHistory.map(item => Number(item.score) || 0));
 
             document.getElementById('hist-avg-score').textContent = `${avg}%`;
             document.getElementById('hist-max-score').textContent = `${max}%`;
 
-            list.innerHTML = gradingHistory.map(item => `
+            list.innerHTML = filteredHistory.map(item => `
                 <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
+                    <div class="min-w-0 pr-2">
                         <div class="font-extrabold text-slate-800 text-xs">${escapeHTML(item.studentName)} <span class="text-slate-400 font-semibold">(${escapeHTML(item.studentClass)})</span></div>
                         <div class="text-[11px] text-slate-500 mt-0.5">${escapeHTML(item.subject || '')} • ${escapeHTML(item.gabaritoName)} • ${escapeHTML(item.date)}</div>
                         <div class="flex items-center gap-3 mt-1.5 text-[11px] font-bold">
@@ -2089,7 +2186,7 @@
                             <span class="text-red-500"><i class="fa-solid fa-xmark mr-1"></i>${item.misses} erros</span>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right shrink-0">
                         <span class="inline-block px-3 py-1.5 rounded-xl font-black text-base ${
                             item.score >= 70 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
                         }">
@@ -2098,6 +2195,15 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        function clearHistoryFilters() {
+            ['hist-filter-subject', 'hist-filter-class', 'hist-filter-assessment', 'hist-filter-search']
+                .forEach(id => {
+                    const control = document.getElementById(id);
+                    if (control) control.value = '';
+                });
+            renderHistoricoScreen();
         }
 
         function clearHistory() {
