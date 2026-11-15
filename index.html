@@ -1182,11 +1182,12 @@
                 const row=createBubbleRow(index,true);
                 const status=scanStatuses[index] && scanStatuses[index].status;
                 if(status==='multiple'||status==='uncertain'){
-                    row.querySelector('span').classList.add('text-red-600');
-                    row.querySelector('span').textContent+=' !';
+                    const numberLabel=row.querySelector('span');
+                    numberLabel.classList.add(status==='multiple'?'text-red-600':'text-amber-700');
+                    numberLabel.textContent+=status==='multiple'?' ×':' !';
                     row.title=status==='multiple'
-                        ? 'Mais de uma alternativa marcada. Corrija manualmente.'
-                        : 'Leitura duvidosa. Confira e corrija manualmente.';
+                        ? 'Marcação dupla: esta questão será considerada errada automaticamente.'
+                        : 'Leitura duvidosa. Confira e ajuste manualmente.';
                 }
                 grid.appendChild(row);
             }
@@ -1479,13 +1480,16 @@
                 +'<div class="grid grid-cols-2 gap-1 text-[11px]">'
                 +'<span class="text-emerald-700">Lidas: '+counts.ok+'</span>'
                 +'<span class="text-slate-600">Em branco: '+counts.blank+'</span>'
-                +'<span class="text-red-600">Duplas: '+counts.multiple+'</span>'
+                +'<span class="text-red-600">Marcações duplas (erradas): '+counts.multiple+'</span>'
                 +'<span class="text-amber-700">Duvidosas: '+counts.uncertain+'</span>'
                 +'<span class="text-blue-700">Ajustadas: '+counts.manual+'</span>'
                 +'</div>'
-                +(counts.multiple+counts.uncertain
-                    ?'<p class="text-red-700 font-semibold mt-2">Revise as questões com “!” antes de corrigir.</p>'
-                    :'<p class="text-emerald-700 font-semibold mt-2">Confira as respostas e prossiga para a correção.</p>');
+                +(counts.multiple
+                    ?'<p class="text-red-700 font-semibold mt-2">'+counts.multiple+' questão(ões) com mais de uma alternativa serão consideradas erradas automaticamente.</p>'
+                    :'')
+                +(counts.uncertain
+                    ?'<p class="text-amber-700 font-semibold mt-1">Revise as '+counts.uncertain+' questão(ões) com leitura duvidosa antes de corrigir.</p>'
+                    :'<p class="text-emerald-700 font-semibold mt-1">Confira as respostas e prossiga para a correção.</p>');
         }
 
         async function analyzeOMRCanvas(sourceCanvas) {
@@ -1527,10 +1531,12 @@
                 cv.imshow(output,warped);
                 output.classList.remove('hidden');
                 renderScannerScreen();
-                const issues=scanStatuses.filter(item=>item.status==='multiple'||item.status==='uncertain').length;
+                const doubleMarks=scanStatuses.filter(item=>item.status==='multiple').length;
+                const uncertainMarks=scanStatuses.filter(item=>item.status==='uncertain').length;
                 setOMRStatus('Leitura concluída. '+result.answers.filter(Boolean).length+' respostas identificadas; '+
-                    result.statuses.filter(item=>item.status==='blank').length+' em branco; '+issues+
-                    ' para revisão. Informe nome e turma manualmente.',false);
+                    result.statuses.filter(item=>item.status==='blank').length+' em branco; '+
+                    doubleMarks+' com marcação dupla (consideradas erradas); '+
+                    uncertainMarks+' duvidosas para revisão. Informe nome e turma manualmente.',false);
             }catch(error){
                 setOMRStatus(error.message||'Falha ao interpretar o cartão. Tente outra foto com melhor iluminação.',true);
             }finally{
@@ -1543,10 +1549,11 @@
         function gradeCurrentExam() {
             stopCamera();
             const current = gabaritos[activeGabaritoIndex];
-            const pendingReview=scanStatuses.filter(item=>item && (item.status==='multiple'||item.status==='uncertain')).length;
+            // Marcações duplas ficam sem resposta e contam como erro; somente leituras duvidosas exigem revisão.
+            const pendingReview=scanStatuses.filter(item=>item && item.status==='uncertain').length;
             if(pendingReview>0){
-                setOMRStatus('Há '+pendingReview+' questão(ões) com marcação dupla ou duvidosa. Toque na alternativa correta em cada questão destacada antes de corrigir.',true);
-                showToast('Revise as marcações destacadas.');
+                setOMRStatus('Há '+pendingReview+' questão(ões) com leitura duvidosa. Confira essas marcações antes de corrigir. Questões com duas ou mais alternativas marcadas serão consideradas erradas automaticamente.',true);
+                showToast('Revise apenas as marcações duvidosas.');
                 return;
             }
             let hits = 0;
