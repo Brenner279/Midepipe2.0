@@ -1020,12 +1020,46 @@
             return node;
         }
 
+        // Geometria única compartilhada pelo desenho e pelo leitor OMR.
+        // As questões são organizadas em duas colunas: primeira metade à esquerda,
+        // segunda metade à direita, seguindo o modelo de referência.
+        function getOMRLayout(current) {
+            const rowsPerColumn=Math.ceil(current.count/2);
+            const rowGap=rowsPerColumn>1?Math.min(50,995/(rowsPerColumn-1)):50;
+            const compact=rowGap<30;
+            const optionGap=current.options.length>1
+                ?Math.min(95,286/(current.options.length-1))
+                :0;
+            return {
+                rowsPerColumn:rowsPerColumn,
+                startY:320,
+                rowGap:rowGap,
+                questionColumns:[76,524],
+                bubbleOffset:124,
+                optionGap:optionGap,
+                compact:compact,
+                bubbleRadius:compact?6:8.5,
+                measureRadius:compact?4:5
+            };
+        }
+
+        function getOMRQuestionPosition(questionIndex,layout) {
+            const column=questionIndex<layout.rowsPerColumn?0:1;
+            const row=column===0?questionIndex:questionIndex-layout.rowsPerColumn;
+            return {
+                column:column,
+                row:row,
+                x:layout.questionColumns[column],
+                y:layout.startY+row*layout.rowGap
+            };
+        }
+
         function renderOMRCard(current) {
-            const svg = document.getElementById('omr-card-svg');
-            svg.innerHTML = '';
+            const svg=document.getElementById('omr-card-svg');
+            svg.innerHTML='';
             addSvgNode(svg,'rect',{x:0,y:0,width:1000,height:1400,fill:'#fff'});
-            // Marcadores sólidos e isolados: facilitam a detecção mesmo em fotos de celular.
-            [[42,42],[958,42],[42,1358],[958,1358]].forEach(([x,y]) => {
+            // Marcadores sólidos e isolados para facilitar a detecção pela câmera.
+            [[42,42],[958,42],[42,1358],[958,1358]].forEach(([x,y])=>{
                 addSvgNode(svg,'rect',{x:x-24,y:y-24,width:48,height:48,fill:'#000'});
             });
             addSvgNode(svg,'text',{x:500,y:105,'text-anchor':'middle','font-size':42,'font-weight':800,fill:'#123b78'},'CARTÃO-RESPOSTA');
@@ -1037,19 +1071,46 @@
             addSvgNode(svg,'line',{x1:725,y1:239,x2:918,y2:239,stroke:'#111827','stroke-width':2});
             addSvgNode(svg,'text',{x:500,y:278,'text-anchor':'middle','font-size':16,'font-weight':700,fill:'#334155'},'MARQUE UMA ÚNICA ALTERNATIVA POR QUESTÃO COM CANETA ESCURA');
 
-            const columns=[76,300,524,748], startY=320, rowGap=40;
+            const layout=getOMRLayout(current);
+
+            // Para folhas com muitas questões, as letras aparecem como cabeçalho
+            // de cada bloco, evitando sobreposição entre linhas muito compactas.
+            if(layout.compact){
+                layout.questionColumns.forEach(x=>{
+                    current.options.forEach((letter,optionIndex)=>{
+                        const cx=x+layout.bubbleOffset+optionIndex*layout.optionGap;
+                        addSvgNode(svg,'text',{x:cx,y:310,'text-anchor':'middle','font-size':8,'font-weight':700,fill:'#111827'},letter);
+                    });
+                });
+            }
+
             for(let question=0;question<current.count;question++){
-                const x=columns[question%4], y=startY+Math.floor(question/4)*rowGap;
-                addSvgNode(svg,'text',{x:x,y:y+5,'font-size':17,'font-weight':800,fill:'#111827'},String(question+1)+'.');
+                const position=getOMRQuestionPosition(question,layout);
+                const x=position.x, y=position.y;
+                addSvgNode(svg,'text',{
+                    x:x,y:y+(layout.compact?4:5),
+                    'font-size':layout.compact?11:17,
+                    'font-weight':800,fill:'#111827'
+                },String(question+1).padStart(2,'0'));
+
                 current.options.forEach((letter,optionIndex)=>{
-                    const cx=x+48+optionIndex*17;
-                    addSvgNode(svg,'text',{x:cx,y:y-12,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#111827'},letter);
-                    addSvgNode(svg,'circle',{cx:cx,cy:y,r:8.5,fill:'#fff',stroke:'#111827','stroke-width':2.3});
+                    const cx=x+layout.bubbleOffset+optionIndex*layout.optionGap;
+                    if(!layout.compact){
+                        addSvgNode(svg,'text',{
+                            x:cx,y:y-12,'text-anchor':'middle',
+                            'font-size':10,'font-weight':700,fill:'#111827'
+                        },letter);
+                    }
+                    addSvgNode(svg,'circle',{
+                        cx:cx,cy:y,r:layout.bubbleRadius,
+                        fill:'#fff',stroke:'#111827',
+                        'stroke-width':layout.compact?1.7:2.3
+                    });
                 });
             }
         }
 
-        function renderCartaoScreen() {
+                function renderCartaoScreen() {
             const current=gabaritos[activeGabaritoIndex];
             const select=document.getElementById('cartao-gabarito-select');
             select.innerHTML='';
@@ -1412,8 +1473,7 @@
             return ordered;
         }
 
-        function measureBubbleMark(gray,centerX,centerY) {
-            const radius=5;
+        function measureBubbleMark(gray,centerX,centerY,radius=5) {
             let darkPixels=0;
             let totalPixels=0;
             for(let dy=-radius;dy<=radius;dy++){
@@ -1430,18 +1490,18 @@
         }
 
         function readOMRAnswers(gray,current) {
-            const columnX=[76,300,524,748];
-            const startY=320;
-            const rowGap=40;
+            const layout=getOMRLayout(current);
             const answers=[];
             const statuses=[];
             for(let question=0;question<current.count;question++){
-                const column=question%4;
-                const row=Math.floor(question/4);
-                const x=columnX[column];
-                const y=startY+row*rowGap;
+                const position=getOMRQuestionPosition(question,layout);
                 const ratios=current.options.map((letter,optionIndex)=>
-                    measureBubbleMark(gray,x+48+optionIndex*17,y)
+                    measureBubbleMark(
+                        gray,
+                        position.x+layout.bubbleOffset+optionIndex*layout.optionGap,
+                        position.y,
+                        layout.measureRadius
+                    )
                 );
                 const strong=ratios.map((value,index)=>value>=0.22?index:-1).filter(index=>index>=0);
                 const weak=ratios.map((value,index)=>value>=0.10?index:-1).filter(index=>index>=0);
@@ -1462,7 +1522,7 @@
             return {answers:answers,statuses:statuses};
         }
 
-        function updateOMRSummary() {
+                function updateOMRSummary() {
             const box=document.getElementById('omr-scan-summary');
             if(!box)return;
             const counts={ok:0,blank:0,multiple:0,uncertain:0,manual:0,simulated:0};
