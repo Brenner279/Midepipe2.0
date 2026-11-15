@@ -1421,6 +1421,7 @@
                 gabaritoIndex:activeGabaritoIndex
             }));
             batchPdfResults=[];
+            input.value='';
             renderBatchPDFFileList();
             document.getElementById('batch-pdf-results').innerHTML='';
             document.getElementById('batch-pdf-save').classList.add('hidden');
@@ -1458,6 +1459,8 @@
                 remove.type='button';
                 remove.className='shrink-0 rounded-lg bg-red-50 px-3 py-2 text-[10px] font-bold text-red-700';
                 remove.textContent='Remover';
+                remove.disabled=batchPdfProcessing || batchPdfResults.length>0;
+                remove.classList.toggle('opacity-50',remove.disabled);
                 remove.addEventListener('click',()=>{
                     batchPdfFiles.splice(index,1);
                     renderBatchPDFFileList();
@@ -1521,13 +1524,13 @@
                     identity.appendChild(studentClass);
                     card.appendChild(identity);
 
-                    const counts={multiple:0,blank:0,uncertain:0};
+                    const counts={multiple:0,blank:0,uncertain:0,manual:0};
                     item.statuses.forEach(status=>{
                         if(status && counts[status.status]!==undefined)counts[status.status]++;
                     });
                     const summary=document.createElement('p');
                     summary.className='text-[10px] text-slate-600';
-                    summary.textContent=counts.multiple+' marcações duplas (erradas) • '+counts.blank+' em branco • '+counts.uncertain+' para revisar';
+                    summary.textContent=counts.multiple+' marcações duplas (erradas) • '+counts.blank+' em branco • '+counts.manual+' revisadas manualmente • '+counts.uncertain+' para revisar';
                     card.appendChild(summary);
 
                     const unresolved=[];
@@ -1569,6 +1572,7 @@
                                 if(!select.value)return;
                                 item.answers[questionIndex]=select.value==='__blank__'?null:select.value;
                                 item.resolvedUncertain[questionIndex]=true;
+                                item.statuses[questionIndex].status='manual';
                                 renderBatchPDFResults();
                             });
                             line.appendChild(label);
@@ -1685,8 +1689,8 @@
                 setBatchPDFStatus('Leitura concluída: '+processedPages+' página(s) com cartão analisado, '+errors+' página(s)/arquivo(s) com falha e '+needsReview+' cartão(ões) aguardando revisão. '+savedReady+' resultado(s) pronto(s) para salvar.',false);
             }finally{
                 batchPdfProcessing=false;
-                button.disabled=batchPdfFiles.length===0;
-                button.innerHTML='<i class="fa-solid fa-rotate-right mr-1"></i> Processar PDFs novamente';
+                button.disabled=true;
+                button.innerHTML='<i class="fa-solid fa-check mr-1"></i> Lote processado — selecione novos PDFs para iniciar outro';
             }
         }
 
