@@ -1443,7 +1443,7 @@
             if(searchInput)searchInput.value='';
             input.value='';
             renderBatchPDFFileList();
-            document.getElementById('batch-pdf-results').innerHTML='';
+            renderBatchPDFResults();
             document.getElementById('batch-pdf-save').classList.add('hidden');
             document.getElementById('batch-pdf-process').disabled=batchPdfFiles.length===0;
             if(batchPdfFiles.length){
@@ -1514,7 +1514,7 @@
         }
 
         function normalizeBatchPDFSearch(value) {
-            return String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+            return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
         }
 
         function renderBatchPDFResults() {
