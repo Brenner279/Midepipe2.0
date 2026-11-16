@@ -1,0 +1,9 @@
+{
+  "appId": "br.com.brenner.provafacil",
+  "appName": "ProvaFácil",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  }
+}

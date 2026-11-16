@@ -1,0 +1,24 @@
+{
+  "name": "provafacil-offline-android",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Empacotamento Android offline do ProvaFácil",
+  "scripts": {
+    "android:prepare": "node scripts/prepare-android.mjs",
+    "android:patch-manifest": "node scripts/patch-android-manifest.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capgo/capacitor-printer": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@fortawesome/fontawesome-free": "6.4.0",
+    "@fontsource/inter": "^5.2.6",
+    "esbuild": "^0.25.0",
+    "pdfjs-dist": "3.11.174",
+    "tailwindcss": "3.4.17"
+  }
+}
